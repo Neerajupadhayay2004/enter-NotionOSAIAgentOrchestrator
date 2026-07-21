@@ -1,0 +1,2 @@
+delete from agent_actions where request_id = 'cdc3e9a8-5ddd-4a36-b070-3b8d5a87bb69';
+delete from budget_requests where id = 'cdc3e9a8-5ddd-4a36-b070-3b8d5a87bb69';
