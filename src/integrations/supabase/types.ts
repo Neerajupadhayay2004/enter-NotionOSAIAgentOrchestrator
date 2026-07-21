@@ -3360,7 +3360,94 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_actions: {
+        Row: {
+          action_type: string
+          actor: string
+          amount: number | null
+          created_at: string
+          id: string
+          payload: Json | null
+          reasoning: string | null
+          request_id: string
+        }
+        Insert: {
+          action_type: string
+          actor: string
+          amount?: number | null
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          reasoning?: string | null
+          request_id: string
+        }
+        Update: {
+          action_type?: string
+          actor?: string
+          amount?: number | null
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          reasoning?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_actions_request_id_fkey"
+            columns: ["request_id"]
+            referencedRelation: "budget_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_requests: {
+        Row: {
+          campaign_name: string
+          category: string
+          created_at: string
+          final_amount: number | null
+          github_issue_url: string | null
+          id: string
+          justification: string
+          notion_page_id: string | null
+          notion_url: string | null
+          requested_amount: number
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_name: string
+          category: string
+          created_at?: string
+          final_amount?: number | null
+          github_issue_url?: string | null
+          id?: string
+          justification?: string
+          notion_page_id?: string | null
+          notion_url?: string | null
+          requested_amount: number
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_name?: string
+          category?: string
+          created_at?: string
+          final_amount?: number | null
+          github_issue_url?: string | null
+          id?: string
+          justification?: string
+          notion_page_id?: string | null
+          notion_url?: string | null
+          requested_amount?: number
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
