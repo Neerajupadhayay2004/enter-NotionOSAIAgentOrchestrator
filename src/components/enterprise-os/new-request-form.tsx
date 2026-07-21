@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,10 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
-const CATEGORIES = ["Paid Ads", "Events", "Content & Creative", "Tools & Software", "Sponsorships"];
-
 export function NewRequestForm() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const CATEGORIES = [
+    { value: "Paid Ads", labelKey: "home.form.categoryPaidAds" },
+    { value: "Events", labelKey: "home.form.categoryEvents" },
+    { value: "Content & Creative", labelKey: "home.form.categoryContent" },
+    { value: "Tools & Software", labelKey: "home.form.categoryTools" },
+    { value: "Sponsorships", labelKey: "home.form.categorySponsorships" },
+  ];
   const [campaignName, setCampaignName] = useState("");
   const [category, setCategory] = useState("");
   const [requestedAmount, setRequestedAmount] = useState("");
@@ -23,7 +30,7 @@ export function NewRequestForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaignName || !category || !requestedAmount || !justification) {
-      toast.error("Please fill in all fields.");
+      toast.error(t("home.form.toastMissingFields"));
       return;
     }
 
@@ -40,11 +47,11 @@ export function NewRequestForm() {
 
       if (error) throw error;
 
-      toast.success("Request submitted. Marketing and Finance are negotiating...");
+      toast.success(t("home.form.toastSubmitted"));
       navigate(`/requests/${data.requestId}`);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to submit request. Please try again.");
+      toast.error(t("home.form.toastError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -55,19 +62,19 @@ export function NewRequestForm() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-actor-marketing" />
-          New Budget Request
+          {t("home.form.title")}
         </CardTitle>
         <CardDescription>
-          Submitted as the Marketing agent. Finance will automatically review it against policy.
+          {t("home.form.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="campaignName">Campaign name</Label>
+            <Label htmlFor="campaignName">{t("home.form.campaignNameLabel")}</Label>
             <Input
               id="campaignName"
-              placeholder="Q3 Product Launch Campaign"
+              placeholder={t("home.form.campaignNamePlaceholder")}
               value={campaignName}
               onChange={(e) => setCampaignName(e.target.value)}
             />
@@ -75,26 +82,26 @@ export function NewRequestForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("home.form.categoryLabel")}</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t("home.form.categoryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c.value} value={c.value}>{t(c.labelKey)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requestedAmount">Requested amount ($)</Label>
+              <Label htmlFor="requestedAmount">{t("home.form.amountLabel")}</Label>
               <Input
                 id="requestedAmount"
                 type="number"
                 min="0"
-                placeholder="5000"
+                placeholder={t("home.form.amountPlaceholder")}
                 value={requestedAmount}
                 onChange={(e) => setRequestedAmount(e.target.value)}
               />
@@ -102,10 +109,10 @@ export function NewRequestForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="justification">Justification</Label>
+            <Label htmlFor="justification">{t("home.form.justificationLabel")}</Label>
             <Textarea
               id="justification"
-              placeholder="Why does this campaign need this budget?"
+              placeholder={t("home.form.justificationPlaceholder")}
               rows={4}
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
@@ -116,10 +123,10 @@ export function NewRequestForm() {
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting to Finance...
+                {t("home.form.submitting")}
               </>
             ) : (
-              "Submit Request"
+              t("home.form.submitButton")
             )}
           </Button>
         </form>

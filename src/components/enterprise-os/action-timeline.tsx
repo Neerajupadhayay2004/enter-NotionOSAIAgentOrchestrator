@@ -1,6 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { ACTION_LABELS, ACTOR_LABELS, type AgentAction } from "@/types/enterprise-os";
+import { ACTION_LABEL_KEYS, ACTOR_LABEL_KEYS, type AgentAction } from "@/types/enterprise-os";
 import { Building2, Landmark, User, Bot } from "lucide-react";
 
 const ACTOR_ICON: Record<AgentAction["actor"], React.ComponentType<{ className?: string }>> = {
@@ -34,11 +35,13 @@ function formatTime(iso: string) {
 }
 
 export function ActionTimeline({ actions }: { actions: AgentAction[] }) {
+  const { t } = useTranslation();
+
   if (actions.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          No actions logged yet.
+          {t("timeline.empty")}
         </CardContent>
       </Card>
     );
@@ -60,8 +63,8 @@ export function ActionTimeline({ actions }: { actions: AgentAction[] }) {
               <CardContent className="py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <p className="text-sm font-medium">
-                    <span className={ACTOR_TEXT[action.actor]}>{ACTOR_LABELS[action.actor]}</span>{" "}
-                    <span className="text-muted-foreground">{ACTION_LABELS[action.action_type]}</span>
+                    <span className={ACTOR_TEXT[action.actor]}>{t(ACTOR_LABEL_KEYS[action.actor])}</span>{" "}
+                    <span className="text-muted-foreground">{t(ACTION_LABEL_KEYS[action.action_type])}</span>
                     {action.amount != null && (
                       <span className="font-semibold"> ${Number(action.amount).toLocaleString()}</span>
                     )}

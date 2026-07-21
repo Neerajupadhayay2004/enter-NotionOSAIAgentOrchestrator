@@ -1,22 +1,28 @@
+import { useTranslation } from "react-i18next";
 import { NewRequestForm } from "@/components/enterprise-os/new-request-form";
 import { RequestList } from "@/components/enterprise-os/request-list";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { useBudgetRequests } from "@/hooks/use-budget-requests";
 import { Loader2, Building2 } from "lucide-react";
 
 const Index = () => {
+  const { t } = useTranslation();
   const { requests, isLoading } = useBudgetRequests();
 
   return (
     <div className="min-h-full bg-background">
       <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Building2 className="h-5 w-5" />
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">{t("home.header.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("home.header.subtitle")}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-semibold">AI-Native Enterprise OS</h1>
-            <p className="text-sm text-muted-foreground">Marketing and Finance agents negotiate budgets; humans approve in Notion.</p>
-          </div>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -27,7 +33,7 @@ const Index = () => {
 
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            All Requests
+            {t("home.requestsList.title")}
           </h2>
           {isLoading ? (
             <div className="flex justify-center py-12">
