@@ -1,0 +1,3 @@
+delete from incident_actions where incident_id = '7de69b8f-d3fd-4111-9550-69f629a6bf8b';
+delete from honeypot_events where incident_id = '7de69b8f-d3fd-4111-9550-69f629a6bf8b';
+delete from security_incidents where id = '7de69b8f-d3fd-4111-9550-69f629a6bf8b';
