@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const ABUSEIPDB_API_KEY = Deno.env.get("ABUSEIPDB_API_KEY") ?? "";
 
-// AbuseIPDB category codes: 14 = Port Scan, 18 = Brute-Force, 20 = Exploited Host / Malware, 4 = DDoS, 8 = Phishing
+// AbuseIPDB category codes: 14 = Port Scan, 18 = Brute-Force, 20 = Exploited Host / Malware, 4 = DDoS, 8 = Phishing, 21 = Web App Attack
 const CATEGORY_MAP: Record<string, string> = {
   port_scan: "14",
   brute_force: "18",
@@ -18,6 +18,8 @@ const CATEGORY_MAP: Record<string, string> = {
   ddos: "4",
   phishing: "8",
   c2_beacon: "20",
+  xss: "21",
+  sql_injection: "21",
 };
 
 Deno.serve(async (req) => {

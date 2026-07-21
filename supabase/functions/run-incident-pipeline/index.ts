@@ -16,6 +16,8 @@ const corsHeaders = {
 const AI_API_TOKEN = Deno.env.get("AI_API_TOKEN_af4c304323bc")!;
 const AI_MODEL = "google/gemini-3.5-flash";
 const AI_BASE = "https://api.enter.pro/code/api/ai/v1beta/models";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 const NOTION_VERSION = "2022-06-28";
 const FETCH_TIMEOUT_MS = 20000;
 
@@ -195,8 +197,19 @@ async function lookupHash(hash: string | null): Promise<EvidenceCard[]> {
 }
 
 // ---------- LLM agent calls ----------
+//
+// Primary: Enter AI gateway (Gemini). Fallback: Groq (OpenAI-compatible chat
+// completions, free tier) -- used automatically whenever the primary call
+// fails for any reason (credits exhausted, timeout, non-2xx). This keeps the
+// multi-agent pipeline demoable even when one provider is unavailable, and
+// every action log records which provider actually answered.
 
-async function callAgent(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
+interface AgentCallResult {
+  json: Record<string, unknown>;
+  provider: "enter" | "groq";
+}
+
+async function callEnterGemini(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
   const response = await fetchWithTimeout(`${AI_BASE}/${AI_MODEL}:streamGenerateContent`, {
     method: "POST",
     headers: {
@@ -233,6 +246,50 @@ async function callAgent(systemInstruction: string, userPrompt: string): Promise
     return JSON.parse(fullText);
   } catch {
     throw new Error(`Agent returned non-JSON output: ${fullText.slice(0, 300)}`);
+  }
+}
+
+async function callGroq(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+  const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq error (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Groq returned an empty response");
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new Error(`Groq agent returned non-JSON output: ${String(content).slice(0, 300)}`);
+  }
+}
+
+async function callAgent(systemInstruction: string, userPrompt: string): Promise<AgentCallResult> {
+  try {
+    const json = await callEnterGemini(systemInstruction, userPrompt);
+    return { json, provider: "enter" };
+  } catch (primaryError) {
+    console.error("Primary AI gateway failed, falling back to Groq:", primaryError);
+    const json = await callGroq(systemInstruction, userPrompt);
+    return { json, provider: "groq" };
   }
 }
 
@@ -401,9 +458,10 @@ Deno.serve(async (req) => {
       `Source IP: ${incident.source_ip}`,
       incident.file_hash ? `File hash observed: ${incident.file_hash}` : "No file hash observed.",
     ].join(String.fromCharCode(10));
-    const detection = await callAgent(detectionSystem, detectionUser);
+    const detectionResult = await callAgent(detectionSystem, detectionUser);
+    const detection = detectionResult.json;
 
-    await logAction(incidentId, "threat_detection", "detect", detection.reasoning as string, { initialSeverity: detection.initialSeverity }, searchExtras);
+    await logAction(incidentId, "threat_detection", "detect", detection.reasoning as string, { initialSeverity: detection.initialSeverity, llmProvider: detectionResult.provider }, searchExtras);
     await logToNotionAuditDb({ agent: "Threat Detection", action: "Detected event", incidentNumber: incident.incident_number, summary: detection.reasoning as string });
     await supabase.from("security_incidents").update({ status: "analyzing" }).eq("id", incidentId);
 
@@ -441,8 +499,9 @@ Deno.serve(async (req) => {
         `Respond ONLY with strict JSON: {"verdict": "benign"|"suspicious"|"malicious", "confidence": number (0-100), "reasoning": string (1-3 sentences)}.`,
       ].join(String.fromCharCode(10));
       const malwareUser = `File hash: ${incident.file_hash}\nVirusTotal evidence: ${hashCards[0].summary}`;
-      malwareVerdict = await callAgent(malwareSystem, malwareUser) as unknown as typeof malwareVerdict;
-      await logAction(incidentId, "malware_analysis", "analyze", malwareVerdict!.reasoning, malwareVerdict as unknown as Record<string, unknown>, searchExtras);
+      const malwareResult = await callAgent(malwareSystem, malwareUser);
+      malwareVerdict = malwareResult.json as unknown as typeof malwareVerdict;
+      await logAction(incidentId, "malware_analysis", "analyze", malwareVerdict!.reasoning, { ...malwareVerdict, llmProvider: malwareResult.provider } as unknown as Record<string, unknown>, searchExtras);
       await logToNotionAuditDb({ agent: "Malware Analysis", action: "Analyzed file hash", incidentNumber: incident.incident_number, summary: malwareVerdict!.reasoning });
       await setAgentStatus("malware_analysis", "idle", null);
     }
@@ -464,11 +523,12 @@ Deno.serve(async (req) => {
       `OSINT evidence: ${evidenceSummaryText}`,
       malwareVerdict ? `Malware verdict: ${malwareVerdict.verdict} (${malwareVerdict.confidence}% confidence): ${malwareVerdict.reasoning}` : "No file hash to analyze.",
     ].join(String.fromCharCode(10));
-    const responseDecision = await callAgent(responseSystem, responseUser);
+    const responseResult = await callAgent(responseSystem, responseUser);
+    const responseDecision = responseResult.json;
     const riskScore = Math.round(responseDecision.riskScore as number);
     const severity = scoreToSeverity(riskScore);
 
-    await logAction(incidentId, "incident_response", "decide", responseDecision.reasoning as string, { decision: responseDecision.decision, riskScore }, searchExtras);
+    await logAction(incidentId, "incident_response", "decide", responseDecision.reasoning as string, { decision: responseDecision.decision, riskScore, llmProvider: responseResult.provider }, searchExtras);
 
     await supabase.from("security_incidents").update({
       risk_score: riskScore,

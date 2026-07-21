@@ -4,6 +4,7 @@ export type SecurityIncident = Database["public"]["Tables"]["security_incidents"
 export type IncidentEvidence = Database["public"]["Tables"]["incident_evidence"]["Row"];
 export type IncidentAction = Database["public"]["Tables"]["incident_actions"]["Row"];
 export type AgentStatus = Database["public"]["Tables"]["agent_status"]["Row"];
+export type HoneypotEvent = Database["public"]["Tables"]["honeypot_events"]["Row"];
 
 export type IncidentStatus = SecurityIncident["status"];
 export type IncidentSeverity = SecurityIncident["severity"];
@@ -14,6 +15,8 @@ export type ActionActor = IncidentAction["actor"];
 export type ActionType = IncidentAction["action_type"];
 export type AgentName = AgentStatus["agent_name"];
 export type AgentState = AgentStatus["state"];
+export type HoneypotService = HoneypotEvent["service"];
+export type HoneypotVerdict = HoneypotEvent["verdict"];
 
 export const INCIDENT_STATUS_LABEL_KEYS: Record<IncidentStatus, string> = {
   detected: "cyberguard.status.detected",
@@ -52,6 +55,8 @@ export const CATEGORY_LABEL_KEYS: Record<IncidentCategory, string> = {
   ddos: "cyberguard.category.ddos",
   phishing: "cyberguard.category.phishing",
   c2_beacon: "cyberguard.category.c2Beacon",
+  xss: "cyberguard.category.xss",
+  sql_injection: "cyberguard.category.sqlInjection",
 };
 
 export const EVIDENCE_SOURCE_LABEL_KEYS: Record<EvidenceSource, string> = {
@@ -94,4 +99,11 @@ export const ACTION_LABEL_KEYS: Record<ActionType, string> = {
   block_executed: "cyberguard.action.blockExecuted",
   notion_synced: "cyberguard.action.notionSynced",
   error: "cyberguard.action.error",
+};
+
+export const HONEYPOT_SERVICE_LABEL_KEYS: Record<HoneypotService, string> = {
+  ssh: "cyberguard.honeypot.service.ssh",
+  admin_panel: "cyberguard.honeypot.service.adminPanel",
+  database: "cyberguard.honeypot.service.database",
+  rdp: "cyberguard.honeypot.service.rdp",
 };

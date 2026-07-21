@@ -2,6 +2,7 @@ import Index from "./pages/Index";
 import RequestDetail from "./pages/RequestDetail";
 import CyberGuardDashboard from "./pages/CyberGuardDashboard";
 import IncidentDetail from "./pages/IncidentDetail";
+import HoneypotNetwork from "./pages/HoneypotNetwork";
 import NotFound from "./pages/NotFound";
 
 export const routers = [
@@ -14,6 +15,11 @@ export const routers = [
     path: "/security/incidents/:id",
     name: "incident-detail",
     element: <IncidentDetail />,
+  },
+  {
+    path: "/security/honeypot",
+    name: "honeypot-network",
+    element: <HoneypotNetwork />,
   },
   {
     path: "/budget-os",

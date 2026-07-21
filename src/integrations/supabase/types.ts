@@ -3476,6 +3476,49 @@ export type Database = {
         }
         Relationships: []
       }
+      honeypot_events: {
+        Row: {
+          created_at: string
+          detected_pattern: string | null
+          event_type: string
+          id: string
+          incident_id: string | null
+          payload: string | null
+          service: string
+          source_ip: string
+          verdict: string
+        }
+        Insert: {
+          created_at?: string
+          detected_pattern?: string | null
+          event_type: string
+          id?: string
+          incident_id?: string | null
+          payload?: string | null
+          service: string
+          source_ip: string
+          verdict?: string
+        }
+        Update: {
+          created_at?: string
+          detected_pattern?: string | null
+          event_type?: string
+          id?: string
+          incident_id?: string | null
+          payload?: string | null
+          service?: string
+          source_ip?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "honeypot_events_incident_id_fkey"
+            columns: ["incident_id"]
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_actions: {
         Row: {
           action_type: string

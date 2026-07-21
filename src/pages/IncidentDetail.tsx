@@ -7,6 +7,8 @@ import { IncidentStatusBadge } from "@/components/cyberguard/incident-status-bad
 import { SeverityBadge } from "@/components/cyberguard/severity-badge";
 import { IncidentTimeline } from "@/components/cyberguard/incident-timeline";
 import { EvidencePanel } from "@/components/cyberguard/evidence-card";
+import { PipelineStepTracker } from "@/components/cyberguard/pipeline-step-tracker";
+import { LiveConsoleLog } from "@/components/cyberguard/live-console-log";
 import { CATEGORY_LABEL_KEYS } from "@/types/cyberguard";
 import { useIncidentDetail } from "@/hooks/use-security-incidents";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +87,20 @@ const IncidentDetail = () => {
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("cyberguard.detail.pipelineTitle")}
+          </h2>
+          <PipelineStepTracker status={incident.status} actions={actions} hasFileHash={!!incident.file_hash} />
+        </div>
+
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("cyberguard.detail.liveConsole")}
+          </h2>
+          <LiveConsoleLog rows={actions} />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("cyberguard.detail.riskAssessment")}</CardTitle>

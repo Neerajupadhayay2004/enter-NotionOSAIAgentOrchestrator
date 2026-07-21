@@ -119,6 +119,13 @@ export default {
 					'incident-response': 'hsl(var(--agent-incident-response))',
 					compliance: 'hsl(var(--agent-compliance))',
 					human: 'hsl(var(--agent-human))'
+				},
+				terminal: {
+					background: 'hsl(var(--terminal-background))',
+					foreground: 'hsl(var(--terminal-foreground))',
+					accent: 'hsl(var(--terminal-accent))',
+					muted: 'hsl(var(--terminal-muted))',
+					danger: 'hsl(var(--terminal-danger))'
 				}
 			},
 			borderRadius: {

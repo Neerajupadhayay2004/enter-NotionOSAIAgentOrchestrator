@@ -101,6 +101,12 @@
     --agent-incident-response: 25 95% 53%;
     --agent-compliance: 173 58% 39%;
     --agent-human: 45 93% 47%;
+
+    --terminal-background: 220 25% 8%;
+    --terminal-foreground: 142 70% 65%;
+    --terminal-accent: 199 89% 60%;
+    --terminal-muted: 220 15% 45%;
+    --terminal-danger: 0 84% 65%;
   }
 
   .dark {

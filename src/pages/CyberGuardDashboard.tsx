@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AppSwitcher } from "@/components/app-switcher";
 import { SocScene } from "@/components/cyberguard/soc-scene";
@@ -10,8 +12,9 @@ import { PendingApprovalsPanel } from "@/components/cyberguard/pending-approvals
 import { AgentStatusCard } from "@/components/cyberguard/agent-status-card";
 import { AuditLogTable } from "@/components/cyberguard/audit-log-table";
 import { SimulateAttackButton } from "@/components/cyberguard/simulate-attack-button";
+import { LiveConsoleLog } from "@/components/cyberguard/live-console-log";
 import { useSecurityIncidents, useAgentStatuses, useAllIncidentActions } from "@/hooks/use-security-incidents";
-import { Loader2, ShieldHalf } from "lucide-react";
+import { Loader2, ShieldHalf, Network } from "lucide-react";
 
 const CyberGuardDashboard = () => {
   const { t } = useTranslation();
@@ -48,6 +51,12 @@ const CyberGuardDashboard = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <SimulateAttackButton />
+            <Button variant="outline" asChild>
+              <Link to="/security/honeypot">
+                <Network className="h-4 w-4" />
+                {t("cyberguard.honeypot.navLink")}
+              </Link>
+            </Button>
             <AppSwitcher />
             <LanguageSwitcher />
           </div>
@@ -80,6 +89,12 @@ const CyberGuardDashboard = () => {
                   {t("cyberguard.overview.socFloor")}
                 </h2>
                 <SocScene {...sceneProps} />
+              </div>
+              <div>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("cyberguard.overview.liveFeed")}
+                </h2>
+                <LiveConsoleLog rows={actions.slice(0, 40)} maxHeight="220px" />
               </div>
               <div>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

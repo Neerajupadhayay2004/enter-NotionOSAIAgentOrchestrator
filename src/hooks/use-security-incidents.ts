@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { AgentStatus, IncidentAction, IncidentEvidence, SecurityIncident } from "@/types/cyberguard";
+import type { AgentStatus, HoneypotEvent, IncidentAction, IncidentEvidence, SecurityIncident } from "@/types/cyberguard";
 
 export function useSecurityIncidents() {
   const [incidents, setIncidents] = useState<SecurityIncident[]>([]);
@@ -124,4 +124,32 @@ export function useAllIncidentActions() {
   }, [refetch]);
 
   return { actions, isLoading };
+}
+
+export function useHoneypotEvents() {
+  const [events, setEvents] = useState<HoneypotEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("honeypot_events")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (!error && data) setEvents(data);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refetch();
+    const channel = supabase
+      .channel("honeypot_events_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "honeypot_events" }, () => refetch())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
+  return { events, isLoading };
 }

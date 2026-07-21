@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { Loader2, Zap } from "lucide-react";
 
 export function SimulateAttackButton() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isSimulating, setIsSimulating] = useState(false);
 
   const handleSimulate = async () => {
@@ -15,6 +17,7 @@ export function SimulateAttackButton() {
       const { data, error } = await supabase.functions.invoke("simulate-threat-event", { body: {} });
       if (error) throw error;
       toast.success(t("cyberguard.simulate.toastStarted", { incidentNumber: data.incidentNumber }));
+      navigate(`/security/incidents/${data.incidentId}`);
     } catch (error) {
       console.error(error);
       toast.error(t("cyberguard.simulate.toastError"));

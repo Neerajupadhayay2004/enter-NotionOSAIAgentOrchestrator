@@ -1,0 +1,24 @@
+-- Extend incident categories to support XSS and SQL injection from honeypot events
+alter table public.security_incidents drop constraint security_incidents_category_check;
+alter table public.security_incidents add constraint security_incidents_category_check
+  check (category in ('port_scan','brute_force','malware','ddos','phishing','c2_beacon','xss','sql_injection'));
+
+-- Honeypot decoy network events: every interaction with a fake service
+create table public.honeypot_events (
+  id uuid primary key default gen_random_uuid(),
+  service text not null check (service in ('ssh','admin_panel','database','rdp')),
+  event_type text not null check (event_type in ('connection_attempt','brute_force_attempt','sql_injection_attempt','xss_submission')),
+  payload text,
+  source_ip text not null,
+  detected_pattern text,
+  verdict text not null default 'clean' check (verdict in ('clean','suspicious','malicious')),
+  incident_id uuid references public.security_incidents(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index idx_honeypot_events_created_at on public.honeypot_events(created_at desc);
+
+alter table public.honeypot_events enable row level security;
+create policy "Public can view honeypot events" on public.honeypot_events for select using (true);
+
+alter publication supabase_realtime add table public.honeypot_events;
