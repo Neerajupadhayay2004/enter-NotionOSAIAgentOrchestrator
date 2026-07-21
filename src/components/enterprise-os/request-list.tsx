@@ -22,7 +22,7 @@ export function RequestList({ requests }: { requests: BudgetRequest[] }) {
   return (
     <div className="space-y-3">
       {requests.map((request) => (
-        <Link key={request.id} to={`/requests/${request.id}`}>
+        <Link key={request.id} to={`/budget-os/requests/${request.id}`}>
           <Card className="transition-colors hover:border-primary/50">
             <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="min-w-0 flex-1">

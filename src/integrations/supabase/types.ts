@@ -3400,6 +3400,34 @@ export type Database = {
           },
         ]
       }
+      agent_status: {
+        Row: {
+          agent_name: string
+          current_incident_id: string | null
+          last_active_at: string
+          state: string
+        }
+        Insert: {
+          agent_name: string
+          current_incident_id?: string | null
+          last_active_at?: string
+          state?: string
+        }
+        Update: {
+          agent_name?: string
+          current_incident_id?: string | null
+          last_active_at?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_status_current_incident_id_fkey"
+            columns: ["current_incident_id"]
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_requests: {
         Row: {
           campaign_name: string
@@ -3444,6 +3472,137 @@ export type Database = {
           requested_amount?: number
           requested_by?: string
           status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      incident_actions: {
+        Row: {
+          action_type: string
+          actor: string
+          created_at: string
+          id: string
+          incident_id: string
+          payload: Json | null
+          reasoning: string | null
+          search_text: string | null
+        }
+        Insert: {
+          action_type: string
+          actor: string
+          created_at?: string
+          id?: string
+          incident_id: string
+          payload?: Json | null
+          reasoning?: string | null
+          search_text?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor?: string
+          created_at?: string
+          id?: string
+          incident_id?: string
+          payload?: Json | null
+          reasoning?: string | null
+          search_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_actions_incident_id_fkey"
+            columns: ["incident_id"]
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incident_evidence: {
+        Row: {
+          created_at: string
+          id: string
+          incident_id: string
+          raw_response: Json | null
+          score: number
+          source: string
+          summary: string
+          verdict: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incident_id: string
+          raw_response?: Json | null
+          score?: number
+          source: string
+          summary?: string
+          verdict?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incident_id?: string
+          raw_response?: Json | null
+          score?: number
+          source?: string
+          summary?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_evidence_incident_id_fkey"
+            columns: ["incident_id"]
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_incidents: {
+        Row: {
+          category: string
+          created_at: string
+          decision: string | null
+          file_hash: string | null
+          id: string
+          incident_number: string
+          notion_page_id: string | null
+          notion_url: string | null
+          risk_score: number
+          severity: string
+          source_ip: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          decision?: string | null
+          file_hash?: string | null
+          id?: string
+          incident_number: string
+          notion_page_id?: string | null
+          notion_url?: string | null
+          risk_score?: number
+          severity?: string
+          source_ip: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          decision?: string | null
+          file_hash?: string | null
+          id?: string
+          incident_number?: string
+          notion_page_id?: string | null
+          notion_url?: string | null
+          risk_score?: number
+          severity?: string
+          source_ip?: string
+          status?: string
+          title?: string
           updated_at?: string
         }
         Relationships: []

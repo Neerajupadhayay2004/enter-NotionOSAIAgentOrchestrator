@@ -4,6 +4,7 @@ import { NewRequestForm } from "@/components/enterprise-os/new-request-form";
 import { RequestList } from "@/components/enterprise-os/request-list";
 import { OfficeScene } from "@/components/enterprise-os/office-scene";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { AppSwitcher } from "@/components/app-switcher";
 import { useBudgetRequests } from "@/hooks/use-budget-requests";
 import { Loader2, Building2 } from "lucide-react";
 
@@ -21,7 +22,7 @@ const Index = () => {
   return (
     <div className="min-h-full bg-background">
       <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-6">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Building2 className="h-5 w-5" />
@@ -31,7 +32,10 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">{t("home.header.subtitle")}</p>
             </div>
           </div>
-          <LanguageSwitcher />
+          <div className="flex flex-wrap items-center gap-2">
+            <AppSwitcher />
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 

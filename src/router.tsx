@@ -1,16 +1,28 @@
 import Index from "./pages/Index";
 import RequestDetail from "./pages/RequestDetail";
+import CyberGuardDashboard from "./pages/CyberGuardDashboard";
+import IncidentDetail from "./pages/IncidentDetail";
 import NotFound from "./pages/NotFound";
 
 export const routers = [
   {
     path: "/",
     name: "home",
+    element: <CyberGuardDashboard />,
+  },
+  {
+    path: "/security/incidents/:id",
+    name: "incident-detail",
+    element: <IncidentDetail />,
+  },
+  {
+    path: "/budget-os",
+    name: "budget-os-home",
     element: <Index />,
   },
   {
-    path: "/requests/:id",
-    name: "request-detail",
+    path: "/budget-os/requests/:id",
+    name: "budget-os-request-detail",
     element: <RequestDetail />,
   },
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */

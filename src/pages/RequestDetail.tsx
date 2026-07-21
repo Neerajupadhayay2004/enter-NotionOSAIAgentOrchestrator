@@ -51,7 +51,7 @@ const RequestDetail = () => {
       <div className="mx-auto max-w-3xl px-6 py-12 text-center text-muted-foreground">
         {t("requestDetail.notFound")}
         <div className="mt-4">
-          <Link to="/" className="text-sm text-primary underline underline-offset-4">{t("requestDetail.backToDashboard")}</Link>
+          <Link to="/budget-os" className="text-sm text-primary underline underline-offset-4">{t("requestDetail.backToDashboard")}</Link>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ const RequestDetail = () => {
     <div className="min-h-full bg-background">
       <header className="border-b">
         <div className="mx-auto max-w-3xl px-6 py-6">
-          <Link to="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/budget-os" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             {t("requestDetail.backLink")}
           </Link>

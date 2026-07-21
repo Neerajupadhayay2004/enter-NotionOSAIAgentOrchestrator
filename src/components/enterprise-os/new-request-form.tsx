@@ -48,7 +48,7 @@ export function NewRequestForm() {
       if (error) throw error;
 
       toast.success(t("home.form.toastSubmitted"));
-      navigate(`/requests/${data.requestId}`);
+      navigate(`/budget-os/requests/${data.requestId}`);
     } catch (error) {
       console.error(error);
       toast.error(t("home.form.toastError"));

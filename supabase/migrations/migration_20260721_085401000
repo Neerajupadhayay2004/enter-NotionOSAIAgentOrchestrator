@@ -1,0 +1,2 @@
+delete from incident_actions where incident_id = '16e75545-c123-4cd6-876d-3a8b60f1e68d';
+delete from security_incidents where id = '16e75545-c123-4cd6-876d-3a8b60f1e68d';

@@ -80,6 +80,45 @@ export default {
 					finance: 'hsl(var(--actor-finance))',
 					human: 'hsl(var(--actor-human))',
 					system: 'hsl(var(--actor-system))'
+				},
+				severity: {
+					low: 'hsl(var(--severity-low))',
+					'low-foreground': 'hsl(var(--severity-low-foreground))',
+					medium: 'hsl(var(--severity-medium))',
+					'medium-foreground': 'hsl(var(--severity-medium-foreground))',
+					high: 'hsl(var(--severity-high))',
+					'high-foreground': 'hsl(var(--severity-high-foreground))',
+					critical: 'hsl(var(--severity-critical))',
+					'critical-foreground': 'hsl(var(--severity-critical-foreground))'
+				},
+				verdict: {
+					clean: 'hsl(var(--verdict-clean))',
+					'clean-foreground': 'hsl(var(--verdict-clean-foreground))',
+					suspicious: 'hsl(var(--verdict-suspicious))',
+					'suspicious-foreground': 'hsl(var(--verdict-suspicious-foreground))',
+					malicious: 'hsl(var(--verdict-malicious))',
+					'malicious-foreground': 'hsl(var(--verdict-malicious-foreground))',
+					unknown: 'hsl(var(--verdict-unknown))',
+					'unknown-foreground': 'hsl(var(--verdict-unknown-foreground))'
+				},
+				'incident-status': {
+					detected: 'hsl(var(--incident-status-detected))',
+					'detected-foreground': 'hsl(var(--incident-status-detected-foreground))',
+					analyzing: 'hsl(var(--incident-status-analyzing))',
+					'analyzing-foreground': 'hsl(var(--incident-status-analyzing-foreground))',
+					pending: 'hsl(var(--incident-status-pending))',
+					'pending-foreground': 'hsl(var(--incident-status-pending-foreground))',
+					resolved: 'hsl(var(--incident-status-resolved))',
+					'resolved-foreground': 'hsl(var(--incident-status-resolved-foreground))',
+					dismissed: 'hsl(var(--incident-status-dismissed))',
+					'dismissed-foreground': 'hsl(var(--incident-status-dismissed-foreground))'
+				},
+				agent: {
+					'threat-detection': 'hsl(var(--agent-threat-detection))',
+					'malware-analysis': 'hsl(var(--agent-malware-analysis))',
+					'incident-response': 'hsl(var(--agent-incident-response))',
+					compliance: 'hsl(var(--agent-compliance))',
+					human: 'hsl(var(--agent-human))'
 				}
 			},
 			borderRadius: {
