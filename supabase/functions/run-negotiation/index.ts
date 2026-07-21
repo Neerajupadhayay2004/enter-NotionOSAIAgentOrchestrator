@@ -18,6 +18,7 @@ const AI_API_TOKEN = Deno.env.get("AI_API_TOKEN_af4c304323bc")!;
 const AI_MODEL = "google/gemini-3.5-flash";
 const AI_BASE = "https://api.enter.pro/code/api/ai/v1beta/models";
 const NOTION_VERSION = "2022-06-28";
+const FETCH_TIMEOUT_MS = 20000;
 
 const FINANCE_NOTION_TOKEN = Deno.env.get("FINANCE_NOTION_TOKEN")!;
 const NOTION_REQUESTS_DB_ID = Deno.env.get("NOTION_REQUESTS_DB_ID")!;
@@ -35,8 +36,23 @@ interface Policy {
   notes: string;
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request to ${url} timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function callAgent(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
-  const response = await fetch(`${AI_BASE}/${AI_MODEL}:streamGenerateContent`, {
+  const response = await fetchWithTimeout(`${AI_BASE}/${AI_MODEL}:streamGenerateContent`, {
     method: "POST",
     headers: {
       "x-goog-api-key": AI_API_TOKEN,
@@ -77,7 +93,7 @@ async function callAgent(systemInstruction: string, userPrompt: string): Promise
 }
 
 async function notionFetch(token: string, path: string, init?: RequestInit) {
-  const response = await fetch(`https://api.notion.com/v1${path}`, {
+  const response = await fetchWithTimeout(`https://api.notion.com/v1${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -114,7 +130,7 @@ async function getPolicy(category: string): Promise<Policy | null> {
 }
 
 async function logAction(requestId: string, actor: string, actionType: string, amount: number | null, reasoning: string, payload: Record<string, unknown> = {}) {
-  await supabase.from("agent_actions").insert({
+  const { error } = await supabase.from("agent_actions").insert({
     request_id: requestId,
     actor,
     action_type: actionType,
@@ -122,6 +138,7 @@ async function logAction(requestId: string, actor: string, actionType: string, a
     reasoning,
     payload,
   });
+  if (error) console.error("logAction insert error:", error);
 }
 
 async function createNotionRequestPage(request: {
@@ -150,16 +167,40 @@ async function createNotionRequestPage(request: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let requestId: string | undefined;
+
   try {
-    const { requestId } = await req.json();
+    const body = await req.json();
+    requestId = body.requestId;
     if (!requestId) throw new Error("requestId is required");
 
-    const { data: request, error: fetchError } = await supabase
+    // Idempotency guard: if this request already moved past "negotiating",
+    // don't re-run the negotiation (prevents duplicate propose/review/counter
+    // entries if this function gets invoked more than once for the same id).
+    const { data: existing } = await supabase
       .from("budget_requests")
       .select("*")
       .eq("id", requestId)
       .single();
-    if (fetchError || !request) throw new Error("Budget request not found");
+    if (!existing) throw new Error("Budget request not found");
+    if (existing.status !== "negotiating") {
+      return new Response(JSON.stringify({ success: true, skipped: true, status: existing.status }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { count: existingProposeCount } = await supabase
+      .from("agent_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", requestId)
+      .eq("action_type", "propose");
+    if (existingProposeCount && existingProposeCount > 0) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "already started" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const request = existing;
 
     // --- Round 0: Marketing proposes (already captured at submission time) ---
     await logAction(
@@ -261,6 +302,10 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("run-negotiation error:", error);
+    // Make the failure traceable in the timeline instead of failing silently.
+    if (requestId) {
+      await logAction(requestId, "system", "error", null, `Negotiation failed: ${error.message}`, {});
+    }
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

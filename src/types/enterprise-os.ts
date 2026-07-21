@@ -39,4 +39,5 @@ export const ACTION_LABEL_KEYS: Record<ActionType, string> = {
   human_decision: "action.humanDecision",
   notion_synced: "action.notionSynced",
   github_issue_created: "action.githubIssueCreated",
+  error: "action.error",
 };

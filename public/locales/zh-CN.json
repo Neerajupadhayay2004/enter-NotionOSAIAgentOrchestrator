@@ -4,6 +4,7 @@
   "home.hero.subtitle": "轻松把任何 App 变成你的作品。",
   "home.header.title": "AI 原生企业操作系统",
   "home.header.subtitle": "市场部与财务部智能体协商预算；人类在 Notion 中审批。",
+  "home.office.title": "实时智能体工作台",
   "home.form.title": "新建预算申请",
   "home.form.description": "以市场部智能体的身份提交。财务部将自动依据政策进行审核。",
   "home.form.campaignNameLabel": "活动名称",
@@ -61,6 +62,7 @@
   "action.humanDecision": "做出了决定",
   "action.notionSynced": "已同步到 Notion",
   "action.githubIssueCreated": "创建了 GitHub Issue",
+  "action.error": "遇到了错误：",
   "notFound.title": "哎呀，页面不存在",
   "notFound.actions.backHome": "返回首页"
 }

@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NewRequestForm } from "@/components/enterprise-os/new-request-form";
 import { RequestList } from "@/components/enterprise-os/request-list";
+import { OfficeScene } from "@/components/enterprise-os/office-scene";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useBudgetRequests } from "@/hooks/use-budget-requests";
 import { Loader2, Building2 } from "lucide-react";
@@ -8,6 +10,13 @@ import { Loader2, Building2 } from "lucide-react";
 const Index = () => {
   const { t } = useTranslation();
   const { requests, isLoading } = useBudgetRequests();
+
+  const counts = useMemo(() => ({
+    negotiatingCount: requests.filter((r) => r.status === "negotiating").length,
+    pendingCount: requests.filter((r) => r.status === "pending_approval").length,
+    approvedCount: requests.filter((r) => r.status === "approved" || r.status === "completed").length,
+    rejectedCount: requests.filter((r) => r.status === "rejected").length,
+  }), [requests]);
 
   return (
     <div className="min-h-full bg-background">
@@ -26,22 +35,31 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-8 px-6 py-8 md:grid-cols-[1fr_1.4fr]">
-        <div>
-          <NewRequestForm />
-        </div>
-
+      <main className="mx-auto max-w-5xl space-y-8 px-6 py-8">
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("home.requestsList.title")}
+            {t("home.office.title")}
           </h2>
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <RequestList requests={requests} />
-          )}
+          <OfficeScene {...counts} />
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-[1fr_1.4fr]">
+          <div>
+            <NewRequestForm />
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("home.requestsList.title")}
+            </h2>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <RequestList requests={requests} />
+            )}
+          </div>
         </div>
       </main>
     </div>

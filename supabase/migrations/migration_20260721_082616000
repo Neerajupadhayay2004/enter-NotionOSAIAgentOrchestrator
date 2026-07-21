@@ -1,0 +1,8 @@
+delete from agent_actions where request_id in (
+  '845950cb-d4bf-483b-ac76-513e5aade27d',
+  '1f1f61b6-2d86-411c-a384-dab710539c7f'
+);
+delete from budget_requests where id in (
+  '845950cb-d4bf-483b-ac76-513e5aade27d',
+  '1f1f61b6-2d86-411c-a384-dab710539c7f'
+);

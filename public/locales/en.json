@@ -4,6 +4,7 @@
   "home.hero.subtitle": "Make any App yours with ease.",
   "home.header.title": "AI-Native Enterprise OS",
   "home.header.subtitle": "Marketing and Finance agents negotiate budgets; humans approve in Notion.",
+  "home.office.title": "Live Agent Floor",
   "home.form.title": "New Budget Request",
   "home.form.description": "Submitted as the Marketing agent. Finance will automatically review it against policy.",
   "home.form.campaignNameLabel": "Campaign name",
@@ -61,6 +62,7 @@
   "action.humanDecision": "decided",
   "action.notionSynced": "synced to Notion",
   "action.githubIssueCreated": "opened a GitHub issue",
+  "action.error": "encountered an error:",
   "notFound.title": "Oops! Page not found",
   "notFound.actions.backHome": "Return to Home"
 }

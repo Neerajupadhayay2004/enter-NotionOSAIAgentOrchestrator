@@ -97,9 +97,9 @@ const RequestDetail = () => {
             </div>
             <div>
               <p className="text-xs uppercase text-muted-foreground">{t("requestDetail.outcome.status")}</p>
-              <p className="text-lg font-semibold">
+              <div className="text-lg font-semibold">
                 <StatusBadge status={request.status} />
-              </p>
+              </div>
             </div>
           </CardContent>
           {(request.notion_url || request.github_issue_url || showSyncButton) && (
