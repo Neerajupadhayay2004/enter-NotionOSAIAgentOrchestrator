@@ -24,3 +24,4 @@ reports
 *.sln
 *.sw?
 code_template.zip
+backend/.env

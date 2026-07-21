@@ -104,13 +104,54 @@ async function callGroq(systemInstruction: string, userPrompt: string): Promise<
   return JSON.parse(content);
 }
 
-async function callAgent(systemInstruction: string, userPrompt: string): Promise<{ json: Record<string, unknown>; provider: "enter" | "groq" }> {
+async function callGeminiDirect(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
+  const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_API_KEY") ?? "";
+  if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY not configured");
+
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
+      }),
+    },
+  );
+  if (!response.ok) throw new Error(`Gemini direct error (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text?.trim()) throw new Error("Gemini direct returned empty response");
+  return JSON.parse(text);
+}
+
+async function callAgent(systemInstruction: string, userPrompt: string): Promise<{ json: Record<string, unknown>; provider: "enter" | "gemini" | "groq" }> {
+  // Try 1: Gemini direct (most reliable)
+  try {
+    return { json: await callGeminiDirect(systemInstruction, userPrompt), provider: "gemini" };
+  } catch (err) {
+    console.warn("Gemini direct failed:", (err as Error).message?.slice(0, 200));
+  }
+
+  // Try 2: Enter AI gateway
   try {
     return { json: await callEnterGemini(systemInstruction, userPrompt), provider: "enter" };
   } catch (err) {
-    console.error("Primary AI gateway failed, falling back to Groq:", err);
-    return { json: await callGroq(systemInstruction, userPrompt), provider: "groq" };
+    console.warn("Enter AI gateway failed:", (err as Error).message?.slice(0, 200));
   }
+
+  // Try 3: Groq (only if key configured)
+  if (GROQ_API_KEY) {
+    try {
+      return { json: await callGroq(systemInstruction, userPrompt), provider: "groq" };
+    } catch (err) {
+      console.warn("Groq failed:", (err as Error).message?.slice(0, 200));
+    }
+  }
+
+  throw new Error("All AI providers unavailable");
 }
 
 function pad(n: number, width: number) {
@@ -133,7 +174,7 @@ Deno.serve(async (req) => {
       detectedPatterns.length >= 2 ? "malicious" : detectedPatterns.length === 1 ? "suspicious" : "clean";
 
     let agentExplanation = "";
-    let llmProvider: "enter" | "groq" = "enter";
+    let llmProvider: "enter" | "gemini" | "groq" = "enter";
     try {
       const system = [
         "You are the Threat Detection Agent of an AI-native cybersecurity honeypot.",

@@ -2,13 +2,14 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { ACTION_LABEL_KEYS, ACTOR_LABEL_KEYS, type AgentAction } from "@/types/enterprise-os";
-import { Building2, Landmark, User, Bot } from "lucide-react";
+import { Building2, Landmark, User, Bot, Sparkles } from "lucide-react";
 
 const ACTOR_ICON: Record<AgentAction["actor"], React.ComponentType<{ className?: string }>> = {
   marketing: Building2,
   finance: Landmark,
   human: User,
   system: Bot,
+  ai: Sparkles,
 };
 
 const ACTOR_DOT: Record<AgentAction["actor"], string> = {
@@ -16,6 +17,7 @@ const ACTOR_DOT: Record<AgentAction["actor"], string> = {
   finance: "bg-actor-finance",
   human: "bg-actor-human",
   system: "bg-actor-system",
+  ai: "bg-primary",
 };
 
 const ACTOR_TEXT: Record<AgentAction["actor"], string> = {
@@ -23,6 +25,7 @@ const ACTOR_TEXT: Record<AgentAction["actor"], string> = {
   finance: "text-actor-finance",
   human: "text-actor-human",
   system: "text-actor-system",
+  ai: "text-primary",
 };
 
 function formatTime(iso: string) {

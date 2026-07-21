@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:convex": "convex dev",
+    "dev:backend": "cd backend && source venv/bin/activate && python main.py",
+    "dev:all": "npm run dev & npm run dev:backend",
+    "convex:deploy": "convex deploy",
     "build": "NODE_ENV=development vite build --mode development",
     "build:prod": "vite build",
     "check": "pnpm lint && pnpm exec tsc --noEmit",
@@ -48,6 +52,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "convex": "^1.42.3",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",

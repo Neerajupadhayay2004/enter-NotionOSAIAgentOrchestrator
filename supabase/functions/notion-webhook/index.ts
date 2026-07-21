@@ -27,19 +27,29 @@ const supabase = createClient(
 );
 
 async function notionFetch(path: string, init?: RequestInit) {
-  const response = await fetch(`https://api.notion.com/v1${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${FINANCE_NOTION_TOKEN}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Notion API error (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  if (!FINANCE_NOTION_TOKEN) {
+    console.warn("FINANCE_NOTION_TOKEN not configured, skipping Notion sync");
+    return null;
   }
-  return response.json();
+  try {
+    const response = await fetch(`https://api.notion.com/v1${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${FINANCE_NOTION_TOKEN}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (!response.ok) {
+      console.warn(`Notion API error (${response.status}), skipping Notion sync`);
+      return null;
+    }
+    return response.json();
+  } catch (err) {
+    console.warn("Notion API call failed, continuing without Notion:", err);
+    return null;
+  }
 }
 
 async function createGithubIssue(title: string, body: string): Promise<string> {
@@ -150,8 +160,10 @@ Deno.serve(async (req) => {
       const pageId = body.entity?.id ?? body.data?.id;
       if (pageId) {
         const page = await notionFetch(`/pages/${pageId}`);
-        const statusName = page.properties?.Status?.select?.name;
-        if (statusName) await handleDecision(pageId, statusName);
+        if (page) {
+          const statusName = page.properties?.Status?.select?.name;
+          if (statusName) await handleDecision(pageId, statusName);
+        }
       }
     }
 

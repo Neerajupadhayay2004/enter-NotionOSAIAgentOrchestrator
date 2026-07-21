@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NewRequestForm } from "@/components/enterprise-os/new-request-form";
 import { RequestList } from "@/components/enterprise-os/request-list";
+import { PendingBudgetApprovals } from "@/components/enterprise-os/approval-panel";
 import { OfficeScene } from "@/components/enterprise-os/office-scene";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AppSwitcher } from "@/components/app-switcher";
@@ -10,7 +11,7 @@ import { Loader2, Building2 } from "lucide-react";
 
 const Index = () => {
   const { t } = useTranslation();
-  const { requests, isLoading } = useBudgetRequests();
+  const { requests, isLoading, refetch } = useBudgetRequests();
 
   const counts = useMemo(() => ({
     negotiatingCount: requests.filter((r) => r.status === "negotiating").length,
@@ -47,6 +48,15 @@ const Index = () => {
           <OfficeScene {...counts} />
         </div>
 
+        {counts.pendingCount > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("approvals.sectionTitle")}
+            </h2>
+            <PendingBudgetApprovals requests={requests} />
+          </div>
+        )}
+
         <div className="grid gap-8 md:grid-cols-[1fr_1.4fr]">
           <div>
             <NewRequestForm />
@@ -61,7 +71,7 @@ const Index = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <RequestList requests={requests} />
+              <RequestList requests={requests} onRetryComplete={refetch} />
             )}
           </div>
         </div>

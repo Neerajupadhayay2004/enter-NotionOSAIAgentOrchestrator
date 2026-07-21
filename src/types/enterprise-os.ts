@@ -28,6 +28,7 @@ export const ACTOR_LABEL_KEYS: Record<ActionActor, string> = {
   finance: "actor.finance",
   human: "actor.human",
   system: "actor.system",
+  ai: "actor.ai",
 };
 
 export const ACTION_LABEL_KEYS: Record<ActionType, string> = {
@@ -37,7 +38,9 @@ export const ACTION_LABEL_KEYS: Record<ActionType, string> = {
   accept: "action.accept",
   escalate: "action.escalate",
   human_decision: "action.humanDecision",
+  ai_decision: "action.aiDecision",
   notion_synced: "action.notionSynced",
   github_issue_created: "action.githubIssueCreated",
   error: "action.error",
+  ai_review: "action.aiReview",
 };

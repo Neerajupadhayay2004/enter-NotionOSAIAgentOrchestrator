@@ -1,0 +1,11 @@
+-- Add AI advisor actor and ai_review action type for Gemini board analysis
+alter table public.agent_actions drop constraint if exists agent_actions_actor_check;
+alter table public.agent_actions add constraint agent_actions_actor_check
+  check (actor in ('marketing','finance','human','system','ai'));
+
+alter table public.agent_actions drop constraint agent_actions_action_type_check;
+alter table public.agent_actions add constraint agent_actions_action_type_check
+  check (action_type in (
+    'propose','review','counter','accept','escalate',
+    'human_decision','notion_synced','github_issue_created','error','ai_review'
+  ));

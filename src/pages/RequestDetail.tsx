@@ -1,41 +1,38 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/enterprise-os/status-badge";
 import { ActionTimeline } from "@/components/enterprise-os/action-timeline";
+import { ApprovalActions } from "@/components/enterprise-os/approval-actions";
+import { AiRecommendationPanel } from "@/components/enterprise-os/approval-panel";
 import { useBudgetRequest } from "@/hooks/use-budget-requests";
-import { supabase } from "@/integrations/supabase/client";
+import { useBudgetNegotiation } from "@/hooks/use-budget-negotiation";
+import { useConvexBudgetSync } from "@/hooks/use-convex-budget";
+import { ArrowLeft, Github, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Github, Loader2, RefreshCw } from "lucide-react";
 
 const RequestDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { request, actions, isLoading, refetch } = useBudgetRequest(id);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { syncDecision, syncAiReview } = useConvexBudgetSync(request);
+  const { negotiate, isNegotiating } = useBudgetNegotiation();
 
-  const handleSync = async () => {
+  const handleDecision = async (status: string) => {
+    await syncDecision(status);
+    await refetch();
+  };
+
+  const handleRetryNegotiation = async () => {
     if (!id) return;
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("notion-sync-status", {
-        body: { requestId: id },
-      });
-      if (error) throw error;
-      if (data.synced) {
-        toast.success(t("requestDetail.toastSynced"));
-      } else {
-        toast.info(t("requestDetail.toastNoDecision"));
-      }
-      refetch();
-    } catch (error) {
-      console.error(error);
-      toast.error(t("requestDetail.toastSyncError"));
-    } finally {
-      setIsSyncing(false);
+    const result = await negotiate(id);
+    if (result.success) {
+      toast.success(`AI decision: ${result.status}`);
+    } else {
+      toast.error("AI analysis failed");
     }
+    refetch();
   };
 
   if (isLoading) {
@@ -57,7 +54,8 @@ const RequestDetail = () => {
     );
   }
 
-  const showSyncButton = request.status === "pending_approval" || request.status === "approved";
+  const showApprovalPanel = request.status === "pending_approval" || request.status === "negotiating";
+  const isPendingDecision = request.status === "pending_approval";
 
   return (
     <div className="min-h-full bg-background">
@@ -80,6 +78,40 @@ const RequestDetail = () => {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-8">
+        {showApprovalPanel && (
+          <>
+            <AiRecommendationPanel
+              requestId={request.id}
+              enabled
+              request={request}
+              onReviewLoaded={(review) => { syncAiReview(review); }}
+            />
+            {request.status === "negotiating" && (
+              <Card className="border-status-negotiating/40">
+                <CardContent className="flex items-center justify-between py-4">
+                  <p className="text-sm text-muted-foreground">
+                    AI analysis is processing. If stuck, click retry.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryNegotiation}
+                    disabled={isNegotiating}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isNegotiating ? "animate-spin" : ""}`} />
+                    Retry AI Analysis
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            <ApprovalActions
+              requestId={request.id}
+              onDecision={handleDecision}
+              isPendingDecision={isPendingDecision}
+            />
+          </>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("requestDetail.outcome.title")}</CardTitle>
@@ -102,30 +134,14 @@ const RequestDetail = () => {
               </div>
             </div>
           </CardContent>
-          {(request.notion_url || request.github_issue_url || showSyncButton) && (
+          {request.github_issue_url && (
             <CardContent className="flex flex-wrap gap-2 border-t pt-4">
-              {request.notion_url && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={request.notion_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    {t("requestDetail.viewInNotion")}
-                  </a>
-                </Button>
-              )}
-              {request.github_issue_url && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={request.github_issue_url} target="_blank" rel="noreferrer">
-                    <Github className="h-4 w-4" />
-                    {t("requestDetail.viewGithubIssue")}
-                  </a>
-                </Button>
-              )}
-              {showSyncButton && (
-                <Button variant="ghost" size="sm" onClick={handleSync} disabled={isSyncing}>
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-                  {t("requestDetail.checkNotion")}
-                </Button>
-              )}
+              <Button variant="outline" size="sm" asChild>
+                <a href={request.github_issue_url} target="_blank" rel="noreferrer">
+                  <Github className="h-4 w-4" />
+                  {t("requestDetail.viewGithubIssue")}
+                </a>
+              </Button>
             </CardContent>
           )}
         </Card>

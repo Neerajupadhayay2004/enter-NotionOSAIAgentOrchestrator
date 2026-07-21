@@ -1,0 +1,62 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  budgetRequests: defineTable({
+    supabaseId: v.optional(v.string()),
+    campaignName: v.string(),
+    category: v.string(),
+    requestedAmount: v.number(),
+    finalAmount: v.optional(v.number()),
+    status: v.string(),
+    justification: v.string(),
+    requestedBy: v.string(),
+    notionUrl: v.optional(v.string()),
+    humanDecision: v.optional(v.string()),
+    humanDecisionNotes: v.optional(v.string()),
+    humanDecisionAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_supabase_id", ["supabaseId"])
+    .index("by_status", ["status"]),
+
+  aiRecommendations: defineTable({
+    requestSupabaseId: v.string(),
+    recommendation: v.union(
+      v.literal("approve"),
+      v.literal("reject"),
+      v.literal("negotiate"),
+    ),
+    confidence: v.number(),
+    reasoning: v.string(),
+    riskFactors: v.array(v.string()),
+    strengths: v.array(v.string()),
+    provider: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_request", ["requestSupabaseId"]),
+
+  securityIncidents: defineTable({
+    supabaseId: v.optional(v.string()),
+    incidentNumber: v.string(),
+    title: v.string(),
+    category: v.string(),
+    sourceIp: v.string(),
+    fileHash: v.optional(v.string()),
+    status: v.string(),
+    severity: v.optional(v.string()),
+    riskScore: v.optional(v.number()),
+    decision: v.optional(v.string()),
+    notionUrl: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_supabase_id", ["supabaseId"])
+    .index("by_status", ["status"]),
+
+  incidentAnalyses: defineTable({
+    incidentSupabaseId: v.string(),
+    severity: v.string(),
+    riskScore: v.number(),
+    decision: v.string(),
+    reasoning: v.string(),
+    provider: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_incident", ["incidentSupabaseId"]),
+});

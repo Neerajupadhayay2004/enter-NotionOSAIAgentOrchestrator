@@ -206,7 +206,7 @@ async function lookupHash(hash: string | null): Promise<EvidenceCard[]> {
 
 interface AgentCallResult {
   json: Record<string, unknown>;
-  provider: "enter" | "groq";
+  provider: "enter" | "gemini" | "groq" | "fallback";
 }
 
 async function callEnterGemini(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
@@ -282,33 +282,109 @@ async function callGroq(systemInstruction: string, userPrompt: string): Promise<
   }
 }
 
+async function callGeminiDirect(systemInstruction: string, userPrompt: string): Promise<Record<string, unknown>> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_API_KEY") ?? "";
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini direct error (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text?.trim()) throw new Error("Gemini direct returned empty response");
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Gemini direct returned non-JSON: ${text.slice(0, 300)}`);
+  }
+}
+
 async function callAgent(systemInstruction: string, userPrompt: string): Promise<AgentCallResult> {
+  // Try 1: Gemini direct (most reliable - your own API key)
+  try {
+    const json = await callGeminiDirect(systemInstruction, userPrompt);
+    return { json, provider: "gemini" };
+  } catch (geminiError) {
+    console.warn("Gemini direct failed:", (geminiError as Error).message?.slice(0, 200));
+  }
+
+  // Try 2: Enter AI gateway (Gemini via proxy)
   try {
     const json = await callEnterGemini(systemInstruction, userPrompt);
     return { json, provider: "enter" };
-  } catch (primaryError) {
-    console.error("Primary AI gateway failed, falling back to Groq:", primaryError);
-    const json = await callGroq(systemInstruction, userPrompt);
-    return { json, provider: "groq" };
+  } catch (enterError) {
+    console.warn("Enter AI gateway failed:", (enterError as Error).message?.slice(0, 200));
   }
+
+  // Try 3: Groq fallback (only if key is configured)
+  if (GROQ_API_KEY) {
+    try {
+      const json = await callGroq(systemInstruction, userPrompt);
+      return { json, provider: "groq" };
+    } catch (groqError) {
+      console.warn("Groq fallback failed:", (groqError as Error).message?.slice(0, 200));
+    }
+  } else {
+    console.warn("Groq API key not configured, skipping Groq fallback");
+  }
+
+  // Try 4: Safe defaults based on context
+  console.warn("All AI providers failed, using safe defaults");
+  const lowerSystem = systemInstruction.toLowerCase();
+  let fallbackJson: Record<string, unknown>;
+  if (lowerSystem.includes("threat detection") || lowerSystem.includes("initial assessment")) {
+    fallbackJson = { initialSeverity: "medium", reasoning: "All AI providers unavailable. Defaulting to medium severity for manual review." };
+  } else if (lowerSystem.includes("malware")) {
+    fallbackJson = { verdict: "suspicious", confidence: 50, reasoning: "All AI providers unavailable. Flagging as suspicious for manual review." };
+  } else if (lowerSystem.includes("incident response") || lowerSystem.includes("decide")) {
+    fallbackJson = { decision: "escalate", riskScore: 60, reasoning: "All AI providers unavailable. Escalating for human review." };
+  } else {
+    fallbackJson = { reasoning: "All AI providers unavailable. Manual review required.", riskScore: 50 };
+  }
+  return { json: fallbackJson, provider: "fallback" };
 }
 
 // ---------- Notion helpers ----------
 
 async function notionFetch(token: string, path: string, init?: RequestInit) {
-  const response = await fetchWithTimeout(`https://api.notion.com/v1${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Notion API error (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  if (!token) {
+    console.warn("Notion token not configured, skipping Notion call");
+    return null;
   }
-  return response.json();
+  try {
+    const response = await fetchWithTimeout(`https://api.notion.com/v1${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (!response.ok) {
+      console.warn(`Notion API error (${response.status}): skipping Notion sync`);
+      return null;
+    }
+    return response.json();
+  } catch (err) {
+    console.warn("Notion API call failed, continuing without Notion sync:", err);
+    return null;
+  }
 }
 
 async function createNotionIncidentPage(incident: {

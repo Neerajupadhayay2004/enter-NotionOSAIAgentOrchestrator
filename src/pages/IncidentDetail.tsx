@@ -1,7 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IncidentStatusBadge } from "@/components/cyberguard/incident-status-badge";
 import { SeverityBadge } from "@/components/cyberguard/severity-badge";
@@ -11,32 +9,12 @@ import { PipelineStepTracker } from "@/components/cyberguard/pipeline-step-track
 import { LiveConsoleLog } from "@/components/cyberguard/live-console-log";
 import { CATEGORY_LABEL_KEYS } from "@/types/cyberguard";
 import { useIncidentDetail } from "@/hooks/use-security-incidents";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { incident, evidence, actions, isLoading, refetch } = useIncidentDetail(id);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const handleSync = async () => {
-    if (!id) return;
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("notion-sync-security-status", { body: { incidentId: id } });
-      if (error) throw error;
-      if (data.synced) toast.success(t("cyberguard.detail.toastSynced"));
-      else toast.info(t("cyberguard.detail.toastNoDecision"));
-      refetch();
-    } catch (error) {
-      console.error(error);
-      toast.error(t("cyberguard.detail.toastSyncError"));
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -56,8 +34,6 @@ const IncidentDetail = () => {
       </div>
     );
   }
-
-  const showSyncButton = incident.status === "pending_approval";
 
   return (
     <div className="min-h-full bg-background">
@@ -121,24 +97,6 @@ const IncidentDetail = () => {
               </div>
             </div>
           </CardContent>
-          {(incident.notion_url || showSyncButton) && (
-            <CardContent className="flex flex-wrap gap-2 border-t pt-4">
-              {incident.notion_url && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={incident.notion_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    {t("cyberguard.detail.viewInNotion")}
-                  </a>
-                </Button>
-              )}
-              {showSyncButton && (
-                <Button variant="ghost" size="sm" onClick={handleSync} disabled={isSyncing}>
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-                  {t("cyberguard.detail.checkNotion")}
-                </Button>
-              )}
-            </CardContent>
-          )}
         </Card>
 
         <div>

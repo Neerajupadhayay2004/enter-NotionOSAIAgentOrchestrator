@@ -1,12 +1,30 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/enterprise-os/status-badge";
+import { useBudgetNegotiation } from "@/hooks/use-budget-negotiation";
 import type { BudgetRequest } from "@/types/enterprise-os";
-import { ArrowRight, Inbox } from "lucide-react";
+import { ArrowRight, Inbox, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
-export function RequestList({ requests }: { requests: BudgetRequest[] }) {
+export function RequestList({ requests, onRetryComplete }: { requests: BudgetRequest[]; onRetryComplete?: () => void }) {
   const { t } = useTranslation();
+  const { negotiate, isNegotiating } = useBudgetNegotiation();
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const handleRetry = async (requestId: string) => {
+    setRetryingId(requestId);
+    const result = await negotiate(requestId);
+    setRetryingId(null);
+    if (result.success) {
+      toast.success(`AI decision: ${result.status}`);
+    } else {
+      toast.error("AI analysis failed, try again");
+    }
+    onRetryComplete?.();
+  };
 
   if (requests.length === 0) {
     return (
@@ -44,7 +62,23 @@ export function RequestList({ requests }: { requests: BudgetRequest[] }) {
                   )}
                 </p>
               </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                {request.status === "negotiating" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRetry(request.id);
+                    }}
+                    disabled={retryingId === request.id}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${retryingId === request.id ? "animate-spin" : ""}`} />
+                  </Button>
+                )}
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </div>
             </CardContent>
           </Card>
         </Link>

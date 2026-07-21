@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "human-budget-decision": {
+      "verify_jwt": false
+    }
+  }
+}

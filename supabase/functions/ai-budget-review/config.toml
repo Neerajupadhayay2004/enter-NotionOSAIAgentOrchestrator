@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "ai-budget-review": {
+      "verify_jwt": false
+    },
+    "human-budget-decision": {
+      "verify_jwt": false
+    }
+  }
+}
