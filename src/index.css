@@ -50,6 +50,22 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --status-negotiating: 38 92% 50%;
+    --status-negotiating-foreground: 0 0% 100%;
+    --status-pending: 217 91% 60%;
+    --status-pending-foreground: 0 0% 100%;
+    --status-approved: 142 71% 45%;
+    --status-approved-foreground: 0 0% 100%;
+    --status-rejected: 0 72% 51%;
+    --status-rejected-foreground: 0 0% 100%;
+    --status-completed: 262 52% 47%;
+    --status-completed-foreground: 0 0% 100%;
+
+    --actor-marketing: 291 64% 42%;
+    --actor-finance: 199 89% 48%;
+    --actor-human: 25 95% 53%;
+    --actor-system: 215 16% 47%;
   }
 
   .dark {
@@ -88,6 +104,22 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --status-negotiating: 38 92% 55%;
+    --status-negotiating-foreground: 222.2 84% 4.9%;
+    --status-pending: 217 91% 65%;
+    --status-pending-foreground: 222.2 84% 4.9%;
+    --status-approved: 142 71% 50%;
+    --status-approved-foreground: 222.2 84% 4.9%;
+    --status-rejected: 0 72% 58%;
+    --status-rejected-foreground: 0 0% 100%;
+    --status-completed: 262 60% 65%;
+    --status-completed-foreground: 0 0% 100%;
+
+    --actor-marketing: 291 64% 65%;
+    --actor-finance: 199 89% 62%;
+    --actor-human: 25 95% 62%;
+    --actor-system: 215 16% 65%;
   }
 }
 

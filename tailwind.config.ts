@@ -62,6 +62,24 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				status: {
+					negotiating: 'hsl(var(--status-negotiating))',
+					'negotiating-foreground': 'hsl(var(--status-negotiating-foreground))',
+					pending: 'hsl(var(--status-pending))',
+					'pending-foreground': 'hsl(var(--status-pending-foreground))',
+					approved: 'hsl(var(--status-approved))',
+					'approved-foreground': 'hsl(var(--status-approved-foreground))',
+					rejected: 'hsl(var(--status-rejected))',
+					'rejected-foreground': 'hsl(var(--status-rejected-foreground))',
+					completed: 'hsl(var(--status-completed))',
+					'completed-foreground': 'hsl(var(--status-completed-foreground))'
+				},
+				actor: {
+					marketing: 'hsl(var(--actor-marketing))',
+					finance: 'hsl(var(--actor-finance))',
+					human: 'hsl(var(--actor-human))',
+					system: 'hsl(var(--actor-system))'
 				}
 			},
 			borderRadius: {
