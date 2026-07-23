@@ -10,6 +10,8 @@
 
 import type * as aiReview from "../aiReview.js";
 import type * as budgetSync from "../budgetSync.js";
+import type * as securityMutations from "../securityMutations.js";
+import type * as securityQueries from "../securityQueries.js";
 import type * as securitySync from "../securitySync.js";
 
 import type {
@@ -21,6 +23,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   aiReview: typeof aiReview;
   budgetSync: typeof budgetSync;
+  securityMutations: typeof securityMutations;
+  securityQueries: typeof securityQueries;
   securitySync: typeof securitySync;
 }>;
 

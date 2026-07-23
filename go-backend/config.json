@@ -1,0 +1,6 @@
+{
+  "port": "8081",
+  "honeypot_enabled": true,
+  "supabase_url": "",
+  "supabase_key": ""
+}

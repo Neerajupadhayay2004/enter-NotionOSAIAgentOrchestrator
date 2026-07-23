@@ -18,7 +18,7 @@ import { Loader2, ShieldHalf, Network } from "lucide-react";
 
 const CyberGuardDashboard = () => {
   const { t } = useTranslation();
-  const { incidents, isLoading, approveIncident, blockIncident } = useSecurityIncidents();
+  const { incidents, isLoading, approveIncident, blockIncident, deleteIncident } = useSecurityIncidents();
   const { agents } = useAgentStatuses();
   const { actions } = useAllIncidentActions();
 
@@ -100,16 +100,32 @@ const CyberGuardDashboard = () => {
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   {t("cyberguard.overview.recentIncidents")}
                 </h2>
-                <IncidentList incidents={incidents.slice(0, 5)} />
+                <IncidentList 
+                  incidents={incidents.slice(0, 5)} 
+                  onApprove={approveIncident} 
+                  onBlock={blockIncident} 
+                  onDelete={deleteIncident}
+                />
               </div>
             </TabsContent>
 
             <TabsContent value="incidents">
-              <IncidentList incidents={incidents} />
+              <IncidentList 
+                incidents={incidents} 
+                onApprove={approveIncident} 
+                onBlock={blockIncident} 
+                onDelete={deleteIncident}
+              />
             </TabsContent>
 
               <TabsContent value="approvals">
-              <PendingApprovalsPanel incidents={incidents} actions={actions} onApprove={approveIncident} onBlock={blockIncident} />
+              <PendingApprovalsPanel 
+                incidents={incidents} 
+                actions={actions} 
+                onApprove={approveIncident} 
+                onBlock={blockIncident}
+                onDelete={deleteIncident} 
+              />
             </TabsContent>
 
             <TabsContent value="agents" className="grid gap-3 sm:grid-cols-2">

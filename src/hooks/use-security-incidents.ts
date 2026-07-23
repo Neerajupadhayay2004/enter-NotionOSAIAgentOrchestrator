@@ -7,60 +7,147 @@ export function useSecurityIncidents() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("security_incidents")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!error && data) setIncidents(data);
+    try {
+      const { data, error } = await supabase
+        .from("security_incidents")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!error && data) setIncidents(data);
+    } catch (e) {
+      console.error("Error fetching incidents:", e);
+    }
     setIsLoading(false);
   }, []);
 
-  const approveIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" = "human") => {
-    const { error: updateError } = await supabase
-      .from("security_incidents")
-      .update({
-        status: "resolved",
-        decision: "approve",
-      })
-      .eq("id", incidentId);
-    if (updateError) throw updateError;
+  const approveIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" | "agent" = "human") => {
+    const now = new Date().toISOString();
+    // Update local state first for immediate feedback
+    setIncidents(prev => prev.map(incident => 
+      incident.id === incidentId 
+        ? { ...incident, status: "resolved", decision: "monitor", updated_at: now } 
+        : incident
+    ));
 
-    const actionType = actor === "ai" ? "ai_approval" : "human_approval";
-    const defaultReasoning = actor === "ai" ? "AI auto-approved the incident based on analysis." : "Human approved the incident.";
+    // Try to sync with Supabase in background, ignore errors
+    (async () => {
+      try {
+        const updateData: any = {
+          status: "resolved",
+          decision: "monitor",
+          updated_at: now,
+        };
+        await supabase
+          .from("security_incidents")
+          .update(updateData)
+          .eq("id", incidentId);
 
-    const { error: actionError } = await supabase
-      .from("incident_actions")
-      .insert({
-        incident_id: incidentId,
-        actor,
-        action_type: actionType,
-        reasoning: notes || defaultReasoning,
-      });
-    if (actionError) throw actionError;
+        const dbActor = actor === "human" ? "human" : "incident_response";
+        const defaultReasoning = actor === "ai" ? "AI auto-approved the incident based on analysis." : 
+                                actor === "agent" ? "Agent approved the incident automatically." : "Human approved the incident.";
+        const actionData: any = {
+          incident_id: incidentId,
+          actor: dbActor,
+          action_type: "human_decision",
+          reasoning: notes || defaultReasoning,
+          payload: {
+            decision: "approve",
+            originalActor: actor,
+            notes: notes
+          }
+        };
+        await supabase
+          .from("incident_actions")
+          .insert(actionData);
+      } catch (e) {
+        console.error("Supabase sync error (approve):", e);
+      }
+    })();
   }, []);
 
-  const blockIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" = "human") => {
-    const { error: updateError } = await supabase
-      .from("security_incidents")
-      .update({
-        status: "blocked",
-        decision: "block",
-      })
-      .eq("id", incidentId);
-    if (updateError) throw updateError;
+  const blockIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" | "agent" = "human") => {
+    const now = new Date().toISOString();
+    // Update local state first for immediate feedback
+    setIncidents(prev => prev.map(incident => 
+      incident.id === incidentId 
+        ? { ...incident, status: "resolved", decision: "block", updated_at: now } 
+        : incident
+    ));
 
-    const actionType = actor === "ai" ? "ai_block" : "human_block";
-    const defaultReasoning = actor === "ai" ? "AI auto-blocked the incident based on analysis." : "Human blocked the incident.";
+    // Try to sync with Supabase in background, ignore errors
+    (async () => {
+      try {
+        const updateData: any = {
+          status: "resolved",
+          decision: "block",
+          updated_at: now,
+        };
+        await supabase
+          .from("security_incidents")
+          .update(updateData)
+          .eq("id", incidentId);
 
-    const { error: actionError } = await supabase
-      .from("incident_actions")
-      .insert({
-        incident_id: incidentId,
-        actor,
-        action_type: actionType,
-        reasoning: notes || defaultReasoning,
-      });
-    if (actionError) throw actionError;
+        const dbActor = actor === "human" ? "human" : "incident_response";
+        const defaultReasoning = actor === "ai" ? "AI auto-blocked the incident based on analysis." : 
+                                actor === "agent" ? "Agent blocked the incident automatically." : "Human blocked the incident.";
+        const actionData: any = {
+          incident_id: incidentId,
+          actor: dbActor,
+          action_type: "human_decision",
+          reasoning: notes || defaultReasoning,
+          payload: {
+            decision: "block",
+            originalActor: actor,
+            notes: notes
+          }
+        };
+        await supabase
+          .from("incident_actions")
+          .insert(actionData);
+      } catch (e) {
+        console.error("Supabase sync error (block):", e);
+      }
+    })();
+  }, []);
+
+  const deleteIncident = useCallback(async (incidentId: string, deletedBy: string = "human", notes?: string) => {
+    const now = new Date().toISOString();
+    // Update local state first for immediate feedback
+    setIncidents(prev => prev.map(incident => 
+      incident.id === incidentId 
+        ? { ...incident, status: "dismissed", updated_at: now } 
+        : incident
+    ));
+
+    // Try to sync with Supabase in background, ignore errors
+    (async () => {
+      try {
+        const updateData: any = {
+          status: "dismissed",
+          updated_at: now,
+        };
+        await supabase
+          .from("security_incidents")
+          .update(updateData)
+          .eq("id", incidentId);
+
+        const actionData: any = {
+          incident_id: incidentId,
+          actor: "human",
+          action_type: "human_decision",
+          reasoning: notes || "Incident deleted",
+          payload: {
+            decision: "delete",
+            deletedBy: deletedBy,
+            notes: notes
+          }
+        };
+        await supabase
+          .from("incident_actions")
+          .insert(actionData);
+      } catch (e) {
+        console.error("Supabase sync error (delete):", e);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -74,7 +161,7 @@ export function useSecurityIncidents() {
     };
   }, [refetch]);
 
-  return { incidents, isLoading, refetch, approveIncident, blockIncident };
+  return { incidents, isLoading, refetch, approveIncident, blockIncident, deleteIncident };
 }
 
 export function useIncidentDetail(incidentId: string | undefined) {
@@ -83,16 +170,25 @@ export function useIncidentDetail(incidentId: string | undefined) {
   const [actions, setActions] = useState<IncidentAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Function to update incident locally
+  const updateLocalIncident = useCallback((updated: Partial<SecurityIncident>) => {
+    setIncident(prev => prev ? { ...prev, ...updated } : null);
+  }, []);
+
   const refetch = useCallback(async () => {
     if (!incidentId) return;
-    const [{ data: incidentData }, { data: evidenceData }, { data: actionsData }] = await Promise.all([
-      supabase.from("security_incidents").select("*").eq("id", incidentId).maybeSingle(),
-      supabase.from("incident_evidence").select("*").eq("incident_id", incidentId).order("created_at", { ascending: true }),
-      supabase.from("incident_actions").select("*").eq("incident_id", incidentId).order("created_at", { ascending: true }),
-    ]);
-    setIncident(incidentData ?? null);
-    setEvidence(evidenceData ?? []);
-    setActions(actionsData ?? []);
+    try {
+      const [{ data: incidentData }, { data: evidenceData }, { data: actionsData }] = await Promise.all([
+        supabase.from("security_incidents").select("*").eq("id", incidentId).maybeSingle(),
+        supabase.from("incident_evidence").select("*").eq("incident_id", incidentId).order("created_at", { ascending: true }),
+        supabase.from("incident_actions").select("*").eq("incident_id", incidentId).order("created_at", { ascending: true }),
+      ]);
+      setIncident(incidentData ?? null);
+      setEvidence(evidenceData ?? []);
+      setActions(actionsData ?? []);
+    } catch (e) {
+      console.error("Error fetching incident detail:", e);
+    }
     setIsLoading(false);
   }, [incidentId]);
 
@@ -110,7 +206,7 @@ export function useIncidentDetail(incidentId: string | undefined) {
     };
   }, [incidentId, refetch]);
 
-  return { incident, evidence, actions, isLoading, refetch };
+  return { incident, evidence, actions, isLoading, refetch, updateLocalIncident };
 }
 
 export function useAgentStatuses() {

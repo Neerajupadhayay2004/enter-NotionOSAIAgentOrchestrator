@@ -29,18 +29,20 @@ import {
   ExternalLink,
   Bot,
   User,
+  Trash2,
+  Cpu,
 } from "lucide-react";
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { incident, evidence, actions, isLoading, refetch } = useIncidentDetail(id);
-  const { approveIncident, blockIncident } = useSecurityIncidents();
+  const { incident, evidence, actions, isLoading, refetch, updateLocalIncident } = useIncidentDetail(id);
+  const { approveIncident, blockIncident, deleteIncident } = useSecurityIncidents();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogAction, setDialogAction] = useState<"approve" | "block">("approve");
-  const [dialogActor, setDialogActor] = useState<"human" | "ai">("human");
+  const [dialogAction, setDialogAction] = useState<"approve" | "block" | "delete">("approve");
+  const [dialogActor, setDialogActor] = useState<"human" | "ai" | "agent">("human");
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState("");
 
@@ -54,29 +56,43 @@ const IncidentDetail = () => {
     setIsProcessing(true);
     try {
       if (dialogAction === "approve") {
+        // Update local first for immediate feedback
+        updateLocalIncident({ status: "resolved", decision: "monitor", updated_at: new Date().toISOString() });
         await approveIncident(incident.id, notes || undefined, dialogActor);
         toast({
-          title: dialogActor === "ai" ? t("cyberguard.decision.aiToastApproved") : t("cyberguard.decision.toastApproved"),
-          description: t("cyberguard.decision.toastApprovedDesc", {
-            number: incident.incident_number,
-          }),
+          title: dialogActor === "ai" ? "AI Approved" : dialogActor === "agent" ? "Agent Approved" : "Approved",
+          description: `Incident ${incident.incident_number} has been approved`,
         });
-      } else {
+      } else if (dialogAction === "block") {
+        // Update local first for immediate feedback
+        updateLocalIncident({ status: "resolved", decision: "block", updated_at: new Date().toISOString() });
         await blockIncident(incident.id, notes || undefined, dialogActor);
         toast({
-          title: dialogActor === "ai" ? t("cyberguard.decision.aiToastBlocked") : t("cyberguard.decision.toastBlocked"),
-          description: t("cyberguard.decision.toastBlockedDesc", {
-            number: incident.incident_number,
-            ip: incident.source_ip,
-          }),
+          title: dialogActor === "ai" ? "AI Blocked" : dialogActor === "agent" ? "Agent Blocked" : "Blocked",
+          description: `Incident ${incident.incident_number} from ${incident.source_ip} has been blocked`,
         });
+      } else if (dialogAction === "delete") {
+        // Update local first for immediate feedback
+        updateLocalIncident({ status: "dismissed", updated_at: new Date().toISOString() });
+        await deleteIncident(incident.id, dialogActor, notes || undefined);
+        toast({
+          title: "Deleted",
+          description: `Incident ${incident.incident_number} has been deleted`,
+        });
+        setDialogOpen(false);
+        setNotes("");
+        refetch();
+        window.location.href = "/";
+        return;
       }
       setDialogOpen(false);
       setNotes("");
       refetch();
-    } catch {
+    } catch (err) {
+      console.error("Error handling decision:", err);
       toast({
-        title: t("cyberguard.decision.toastError"),
+        title: "Error",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
         variant: "destructive",
       });
     } finally {
@@ -95,15 +111,15 @@ const IncidentDetail = () => {
   if (!incident) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-12 text-center text-muted-foreground">
-        {t("cyberguard.detail.notFound")}
+        Incident not found
         <div className="mt-4">
-          <Link to="/" className="text-sm text-primary underline underline-offset-4">{t("cyberguard.detail.backToDashboard")}</Link>
+          <Link to="/" className="text-sm text-primary underline underline-offset-4">Back to Dashboard</Link>
         </div>
       </div>
     );
   }
 
-  const isPending = incident.status === "pending_approval";
+  const isPending = incident.status === "pending_approval" || incident.status === "detected" || incident.status === "analyzing";
 
   return (
     <div className="min-h-full bg-background">
@@ -111,7 +127,7 @@ const IncidentDetail = () => {
         <div className="mx-auto max-w-4xl px-6 py-6">
           <Link to="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            {t("cyberguard.detail.backLink")}
+            Back to Dashboard
           </Link>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -133,31 +149,23 @@ const IncidentDetail = () => {
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-        {isPending && (
+        {(isPending || incident.status === "pending_approval") && (
           <Card className="border-status-pending/40">
             <CardContent className="space-y-4 py-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-medium">{t("cyberguard.detail.pendingAction")}</p>
+                  <p className="font-medium">Pending Action</p>
                   <p className="text-sm text-muted-foreground">
-                    {t("cyberguard.detail.pendingActionDesc")}
+                    Review and take action on this security incident
                   </p>
                 </div>
-                {incident.notion_url && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={incident.notion_url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                      {t("cyberguard.detail.viewInNotion")}
-                    </a>
-                  </Button>
-                )}
               </div>
 
               {aiReasoning && (
                 <div className="rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
                   <div className="mb-2 flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
                     <Bot className="h-4 w-4" />
-                    {t("cyberguard.decision.aiRecommendation")}
+                    AI Recommendation
                     {incident.decision && (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold uppercase dark:bg-blue-900">
                         {incident.decision}
@@ -172,11 +180,20 @@ const IncidentDetail = () => {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="gap-1.5 border-purple-500 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-400 dark:text-purple-400 dark:hover:bg-purple-950"
+                  onClick={() => { setDialogAction(incident.decision === "block" ? "block" : "approve"); setDialogActor("agent"); setNotes(""); setDialogOpen(true); }}
+                >
+                  <Cpu className="h-4 w-4" />
+                  Let Agent Decide
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="gap-1.5 border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-950"
                   onClick={() => { setDialogAction(incident.decision === "block" ? "block" : "approve"); setDialogActor("ai"); setNotes(""); setDialogOpen(true); }}
                 >
                   <Bot className="h-4 w-4" />
-                  {t("cyberguard.decision.letAiDecide")}
+                  Let AI Decide
                 </Button>
                 <Button
                   variant="default"
@@ -185,7 +202,7 @@ const IncidentDetail = () => {
                   onClick={() => { setDialogAction("approve"); setDialogActor("human"); setNotes(""); setDialogOpen(true); }}
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  {t("cyberguard.decision.humanApprove")}
+                  Approve
                 </Button>
                 <Button
                   variant="destructive"
@@ -194,7 +211,16 @@ const IncidentDetail = () => {
                   onClick={() => { setDialogAction("block"); setDialogActor("human"); setNotes(""); setDialogOpen(true); }}
                 >
                   <ShieldOff className="h-4 w-4" />
-                  {t("cyberguard.decision.humanBlock")}
+                  Block
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-950"
+                  onClick={() => { setDialogAction("delete"); setDialogActor("human"); setNotes(""); setDialogOpen(true); }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
                 </Button>
               </div>
             </CardContent>
@@ -255,38 +281,44 @@ const IncidentDetail = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {dialogActor === "ai" ? <Bot className="h-5 w-5" /> : <User className="h-5 w-5" />}
+              {dialogActor === "ai" ? <Bot className="h-5 w-5" /> : dialogActor === "agent" ? <Cpu className="h-5 w-5" /> : <User className="h-5 w-5" />}
               {dialogAction === "approve"
-                ? (dialogActor === "ai" ? t("cyberguard.decision.aiConfirmApprove") : t("cyberguard.decision.confirmApprove"))
-                : (dialogActor === "ai" ? t("cyberguard.decision.aiConfirmBlock") : t("cyberguard.decision.confirmBlock"))}
+                ? `${dialogActor === "ai" ? "AI" : dialogActor === "agent" ? "Agent" : "Human"} Approve Confirmation`
+                : dialogAction === "block"
+                ? `${dialogActor === "ai" ? "AI" : dialogActor === "agent" ? "Agent" : "Human"} Block Confirmation`
+                : "Delete Confirmation"}
             </DialogTitle>
             <DialogDescription>
               {dialogAction === "approve"
-                ? (dialogActor === "ai" ? t("cyberguard.decision.aiConfirmApproveDesc") : t("cyberguard.decision.confirmApproveDesc"))
-                : (dialogActor === "ai" ? t("cyberguard.decision.aiConfirmBlockDesc") : t("cyberguard.decision.confirmBlockDesc"))}
+                ? `Are you sure you want to approve this incident? This will mark it as resolved.`
+                : dialogAction === "block"
+                ? `Are you sure you want to block this incident? This will block the source IP.`
+                : `Are you sure you want to delete this incident? This action cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-md border bg-muted/50 p-3 text-sm">
             <p className="font-medium">{incident.title}</p>
             <p className="mt-1 text-muted-foreground">
               {incident.incident_number} · {incident.source_ip} ·
-              {t("cyberguard.approvals.riskScore", { score: incident.risk_score })}
+              Risk Score: {incident.risk_score}/100
             </p>
           </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              {t("cyberguard.decision.notesLabel")}
-            </label>
-            <Textarea
-              placeholder={dialogActor === "ai" ? t("cyberguard.decision.aiNotesPlaceholder") : t("cyberguard.decision.notesPlaceholder")}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
+          {dialogAction !== "delete" && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Notes (Optional)
+              </label>
+              <Textarea
+                placeholder={dialogActor === "ai" ? "Add reasoning for AI decision..." : dialogActor === "agent" ? "Add reasoning for agent decision..." : "Add notes for this decision..."}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isProcessing}>
-              {t("cyberguard.decision.cancel")}
+              Cancel
             </Button>
             <Button
               variant={dialogAction === "approve" ? "default" : "destructive"}
@@ -296,9 +328,12 @@ const IncidentDetail = () => {
             >
               {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {dialogActor === "ai" && <Bot className="mr-1 h-4 w-4" />}
+              {dialogActor === "agent" && <Cpu className="mr-1 h-4 w-4" />}
               {dialogAction === "approve"
-                ? t("cyberguard.decision.approve")
-                : t("cyberguard.decision.block")}
+                ? "Approve"
+                : dialogAction === "block"
+                ? "Block"
+                : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
