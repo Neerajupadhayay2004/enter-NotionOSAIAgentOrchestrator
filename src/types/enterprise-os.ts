@@ -12,7 +12,7 @@ export const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
   pending_approval: "status.pendingApproval",
   approved: "status.approved",
   rejected: "status.rejected",
-  completed: "status.completed",
+  completed: "status.approved",
 };
 
 export const STATUS_BADGE_VARIANT: Record<RequestStatus, "negotiating" | "pending" | "approved" | "rejected" | "completed"> = {
@@ -20,7 +20,7 @@ export const STATUS_BADGE_VARIANT: Record<RequestStatus, "negotiating" | "pendin
   pending_approval: "pending",
   approved: "approved",
   rejected: "rejected",
-  completed: "completed",
+  completed: "approved",
 };
 
 export const ACTOR_LABEL_KEYS: Record<ActionActor, string> = {

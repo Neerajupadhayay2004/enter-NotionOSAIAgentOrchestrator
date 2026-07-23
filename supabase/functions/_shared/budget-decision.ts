@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const NOTION_VERSION = "2022-06-28";
-const FINANCE_NOTION_TOKEN = Deno.env.get("FINANCE_NOTION_TOKEN")!;
+const FINANCE_NOTION_TOKEN = Deno.env.get("FINANCE_NOTION_TOKEN") ?? "";
 const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN");
 const GITHUB_REPO = Deno.env.get("GITHUB_REPO");
 
@@ -14,7 +14,7 @@ export function getServiceClient() {
 
 async function notionFetch(path: string, init?: RequestInit) {
   if (!FINANCE_NOTION_TOKEN) {
-    console.warn("FINANCE_NOTION_TOKEN not configured, skipping Notion sync");
+    console.info("FINANCE_NOTION_TOKEN not configured — skipping Notion sync (non-blocking)");
     return null;
   }
   try {
@@ -28,12 +28,13 @@ async function notionFetch(path: string, init?: RequestInit) {
       },
     });
     if (!response.ok) {
-      console.warn(`Notion API error (${response.status}): skipping Notion sync`);
+      // Log but NEVER throw — Notion is an optional mirror, not the source of truth
+      console.warn(`Notion API error (${response.status}) — continuing without Notion sync`);
       return null;
     }
     return response.json();
   } catch (err) {
-    console.warn("Notion API call failed, continuing without Notion sync:", err);
+    console.warn("Notion API call failed — continuing without Notion sync:", err);
     return null;
   }
 }
@@ -71,7 +72,9 @@ export async function applyBudgetDecision(
     .single();
 
   if (error || !request) throw new Error("Budget request not found");
-  if (request.status !== "pending_approval") {
+
+  const allowedStatuses = ["pending_approval", "negotiating", "approved", "completed"];
+  if (!allowedStatuses.includes(request.status)) {
     throw new Error(`Cannot ${decision} request in status "${request.status}"`);
   }
 
@@ -79,12 +82,13 @@ export async function applyBudgetDecision(
   const notes = options.notes?.trim();
 
   if (decision === "approve") {
+    // Immediately mark as approved in Supabase (source of truth)
     await supabase.from("budget_requests").update({ status: "approved" }).eq("id", request.id);
     await supabase.from("agent_actions").insert({
       request_id: request.id,
       actor: "human",
       action_type: "human_decision",
-      amount: request.final_amount,
+      amount: request.final_amount ?? request.requested_amount,
       reasoning: notes || `Human approved the negotiated budget (${source}).`,
       payload: { status: "Approved", source, notes: notes ?? null },
     });
@@ -95,7 +99,7 @@ export async function applyBudgetDecision(
         `[Budget Approved] ${request.campaign_name}`,
         [
           `**Category:** ${request.category}`,
-          `**Approved amount:** $${request.final_amount}`,
+          `**Approved amount:** $${request.final_amount ?? request.requested_amount}`,
           `**Requested by:** ${request.requested_by}`,
           "",
           `**Justification:** ${request.justification}`,
@@ -105,9 +109,10 @@ export async function applyBudgetDecision(
         ].filter(Boolean).join("\n"),
       );
     } catch (githubError) {
-      console.warn("GitHub issue creation failed:", githubError);
+      console.warn("GitHub issue creation failed (non-blocking):", githubError);
     }
 
+    // Mark as completed in Supabase
     await supabase.from("budget_requests").update({
       status: "completed",
       github_issue_url: issueUrl,
@@ -124,30 +129,28 @@ export async function applyBudgetDecision(
       });
     }
 
+    // Sync to Notion (optional — never block on this)
     if (request.notion_page_id) {
-      try {
-        await notionFetch(`/pages/${request.notion_page_id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            properties: {
-              Status: { select: { name: "Completed" } },
-              ...(issueUrl ? { "GitHub Issue": { url: issueUrl } } : {}),
-              ...(notes ? {
-                "Decision Notes": {
-                  rich_text: [{ text: { content: `Approved (${source}): ${notes.slice(0, 1800)}` } }],
-                },
-              } : {}),
-            },
-          }),
-        });
-      } catch (notionErr) {
-        console.warn("Notion sync failed but decision recorded:", notionErr);
-      }
+      await notionFetch(`/pages/${request.notion_page_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          properties: {
+            Status: { select: { name: "Completed" } },
+            ...(issueUrl ? { "GitHub Issue": { url: issueUrl } } : {}),
+            ...(notes ? {
+              "Decision Notes": {
+                rich_text: [{ text: { content: `Approved (${source}): ${notes.slice(0, 1800)}` } }],
+              },
+            } : {}),
+          },
+        }),
+      });
     }
 
     return { status: "completed" as const, githubIssueUrl: issueUrl };
   }
 
+  // REJECT path
   await supabase.from("budget_requests").update({ status: "rejected" }).eq("id", request.id);
   await supabase.from("agent_actions").insert({
     request_id: request.id,
@@ -158,24 +161,21 @@ export async function applyBudgetDecision(
     payload: { status: "Rejected", source, notes: notes ?? null },
   });
 
+  // Sync to Notion (optional — never block on this)
   if (request.notion_page_id) {
-    try {
-      await notionFetch(`/pages/${request.notion_page_id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          properties: {
-            Status: { select: { name: "Rejected" } },
-            ...(notes ? {
-              "Decision Notes": {
-                rich_text: [{ text: { content: `Rejected (${source}): ${notes.slice(0, 1800)}` } }],
-              },
-            } : {}),
-          },
-        }),
-      });
-    } catch (notionErr) {
-      console.warn("Notion sync failed but decision recorded:", notionErr);
-    }
+    await notionFetch(`/pages/${request.notion_page_id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        properties: {
+          Status: { select: { name: "Rejected" } },
+          ...(notes ? {
+            "Decision Notes": {
+              rich_text: [{ text: { content: `Rejected (${source}): ${notes.slice(0, 1800)}` } }],
+            },
+          } : {}),
+        },
+      }),
+    });
   }
 
   return { status: "rejected" as const, githubIssueUrl: null };

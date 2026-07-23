@@ -8,7 +8,7 @@ export function SystemStatsRow({ incidents }: { incidents: SecurityIncident[] })
 
   const active = incidents.filter((i) => i.status === "analyzing" || i.status === "detected" || i.status === "pending_approval").length;
   const pendingApproval = incidents.filter((i) => i.status === "pending_approval").length;
-  const blocked = incidents.filter((i) => i.decision === "block").length;
+  const blocked = incidents.filter((i) => i.status === "blocked" || i.decision === "block").length;
   const avgRisk = incidents.length > 0
     ? Math.round(incidents.reduce((sum, i) => sum + Number(i.risk_score), 0) / incidents.length)
     : 0;

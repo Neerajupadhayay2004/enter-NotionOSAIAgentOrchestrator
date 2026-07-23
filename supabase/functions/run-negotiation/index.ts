@@ -308,7 +308,9 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("run-negotiation error:", error);
     if (requestId) {
-      await logAction(requestId, "system", "error", null, `Negotiation failed: ${error.message}`, {});
+      // Log the actual failure reason; Notion errors are non-blocking and won't reach here
+      const msg = error instanceof Error ? error.message : String(error);
+      await logAction(requestId, "system", "error", null, `AI negotiation error: ${msg}`, {}).catch(() => {});
     }
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,

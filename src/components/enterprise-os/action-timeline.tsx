@@ -13,19 +13,19 @@ const ACTOR_ICON: Record<AgentAction["actor"], React.ComponentType<{ className?:
 };
 
 const ACTOR_DOT: Record<AgentAction["actor"], string> = {
-  marketing: "bg-actor-marketing",
-  finance: "bg-actor-finance",
-  human: "bg-actor-human",
-  system: "bg-actor-system",
-  ai: "bg-primary",
+  marketing: "bg-purple-600 text-white",
+  finance: "bg-sky-600 text-white",
+  human: "bg-amber-600 text-white",
+  system: "bg-slate-600 text-white",
+  ai: "bg-violet-600 text-white",
 };
 
 const ACTOR_TEXT: Record<AgentAction["actor"], string> = {
-  marketing: "text-actor-marketing",
-  finance: "text-actor-finance",
-  human: "text-actor-human",
-  system: "text-actor-system",
-  ai: "text-primary",
+  marketing: "text-purple-400 font-bold",
+  finance: "text-sky-400 font-bold",
+  human: "text-amber-400 font-bold",
+  system: "text-slate-300 font-bold",
+  ai: "text-violet-400 font-bold",
 };
 
 function formatTime(iso: string) {
@@ -42,8 +42,8 @@ export function ActionTimeline({ actions }: { actions: AgentAction[] }) {
 
   if (actions.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+      <Card className="border-white/10 bg-slate-900/60">
+        <CardContent className="py-8 text-center text-sm text-slate-400">
           {t("timeline.empty")}
         </CardContent>
       </Card>
@@ -57,25 +57,27 @@ export function ActionTimeline({ actions }: { actions: AgentAction[] }) {
         return (
           <li key={action.id} className="relative flex gap-4 pl-1">
             <div className="flex flex-col items-center">
-              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary-foreground", ACTOR_DOT[action.actor])}>
+              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-md", ACTOR_DOT[action.actor])}>
                 <Icon className="h-4 w-4" />
               </div>
-              {index < actions.length - 1 && <div className="mt-1 w-px flex-1 bg-border" />}
+              {index < actions.length - 1 && <div className="mt-1 w-px flex-1 bg-slate-800" />}
             </div>
-            <Card className="mb-2 flex-1">
-              <CardContent className="py-3">
+            <Card className="mb-2 flex-1 border-white/10 bg-slate-900/90 text-slate-100 shadow-lg">
+              <CardContent className="py-3 px-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <p className="text-sm font-medium">
                     <span className={ACTOR_TEXT[action.actor]}>{t(ACTOR_LABEL_KEYS[action.actor])}</span>{" "}
-                    <span className="text-muted-foreground">{t(ACTION_LABEL_KEYS[action.action_type])}</span>
+                    <span className="text-slate-300 font-semibold">{t(ACTION_LABEL_KEYS[action.action_type])}</span>
                     {action.amount != null && (
-                      <span className="font-semibold"> ${Number(action.amount).toLocaleString()}</span>
+                      <span className="font-extrabold text-emerald-400 ml-1"> ${Number(action.amount).toLocaleString()}</span>
                     )}
                   </p>
-                  <span className="text-xs text-muted-foreground">{formatTime(action.created_at)}</span>
+                  <span className="text-xs text-slate-400">{formatTime(action.created_at)}</span>
                 </div>
                 {action.reasoning && (
-                  <p className="mt-1.5 text-sm text-muted-foreground">{action.reasoning}</p>
+                  <p className="mt-2 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                    {action.reasoning}
+                  </p>
                 )}
               </CardContent>
             </Card>

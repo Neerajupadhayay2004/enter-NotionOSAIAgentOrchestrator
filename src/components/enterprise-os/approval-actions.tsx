@@ -13,8 +13,9 @@ import {
   ThumbsDown,
   ThumbsUp,
   UserCheck,
-  Sparkles,
   Hand,
+  TrendingUp,
+  XCircle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -26,9 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const PYTHON_BACKEND_URL =
-  import.meta.env.VITE_PYTHON_BACKEND_URL ?? "http://localhost:8000";
 
 interface ApprovalActionsProps {
   requestId: string;
@@ -50,10 +48,12 @@ export function ApprovalActions({
 
   const submitDecision = async (decision: "approve" | "reject") => {
     setIsSubmitting(true);
-    try {
-      let data: Record<string, unknown> | null = null;
-      let usedSupabase = false;
+    const newStatus = decision === "approve" ? "completed" : "rejected";
 
+    try {
+      // Strategy 1: Try Supabase edge function (handles Notion + GitHub sync)
+      let succeeded = false;
+      let finalStatus = newStatus;
       try {
         const result = await supabase.functions.invoke(
           "human-budget-decision",
@@ -65,38 +65,21 @@ export function ApprovalActions({
             },
           },
         );
+
         if (!result.error && !result.data?.error) {
-          data = result.data;
-          usedSupabase = true;
+          succeeded = true;
+          finalStatus = result.data?.status || finalStatus;
+        } else {
+          console.warn("Supabase edge function returned error:", result.error ?? result.data?.error);
         }
       } catch (sbErr) {
-        console.warn("Supabase edge function failed:", sbErr);
+        console.warn("Supabase edge function invocation failed:", sbErr);
       }
 
-      if (!usedSupabase) {
-        try {
-          const response = await fetch(
-            `${PYTHON_BACKEND_URL}/api/ai/analyze-budget`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                requestId,
-                decision,
-                notes: notes.trim(),
-              }),
-            },
-          );
-          if (response.ok) {
-            data = await response.json();
-          }
-        } catch (pyErr) {
-          console.warn("Python backend also failed:", pyErr);
-        }
-      }
-
-      if (!data) {
-        const newStatus = decision === "approve" ? "completed" : "rejected";
+      // Strategy 2: Direct Supabase DB update as reliable fallback
+      // This always runs if edge function fails, ensuring the UI is never stuck.
+      if (!succeeded) {
+        console.info("Falling back to direct Supabase update for decision:", decision);
         const { error: updateError } = await supabase
           .from("budget_requests")
           .update({ status: newStatus })
@@ -114,26 +97,15 @@ export function ApprovalActions({
             `Human ${decision === "approve" ? "approved" : "rejected"} the budget.`,
           payload: {
             status: decision === "approve" ? "Approved" : "Rejected",
-            source: "in-app",
+            source: "in-app-direct",
           },
         });
-
-        data = { status: newStatus };
       }
 
-      toast.success(
-        decision === "approve"
-          ? t("approval.toastApproved")
-          : t("approval.toastRejected"),
-      );
-      setPendingDecision(null);
-      setNotes("");
-      const newStatus =
-        (data?.status as string) ??
-        (decision === "approve" ? "completed" : "rejected");
-      onDecision(newStatus);
+      // Always notify parent component to sync to Convex and update UI
+      onDecision(finalStatus);
     } catch (err) {
-      console.error(err);
+      console.error("Decision submission failed:", err);
       toast.error(t("approval.toastError"));
     } finally {
       setIsSubmitting(false);
@@ -142,27 +114,48 @@ export function ApprovalActions({
 
   return (
     <>
-      <Card className="border-agent-human/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <UserCheck className="h-4 w-4 text-agent-human" />
-            {t("approval.title")}
+      {/* Board Decision Card */}
+      <Card className="overflow-hidden border-0 shadow-xl">
+        {/* Premium gradient header */}
+        <div className={`px-5 py-4 ${
+          isPendingDecision
+            ? "bg-gradient-to-r from-violet-600/20 via-indigo-600/20 to-violet-600/20 border-b border-violet-500/30"
+            : "bg-gradient-to-r from-amber-600/20 via-orange-600/20 to-amber-600/20 border-b border-amber-500/30"
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                isPendingDecision ? "bg-violet-500/20" : "bg-amber-500/20"
+              }`}>
+                <UserCheck className={`h-4 w-4 ${isPendingDecision ? "text-violet-400" : "text-amber-400"}`} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {t("approval.title")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isPendingDecision ? "Final authority — your decision is binding" : "Override in progress"}
+                </p>
+              </div>
+            </div>
             {!isPendingDecision && (
-              <Badge variant="outline" className="ml-2 gap-1 text-xs">
+              <Badge variant="outline" className="gap-1 border-amber-500/40 text-xs text-amber-400">
                 <Hand className="h-3 w-3" />
                 {t("approval.earlyDecision")}
               </Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </div>
+        </div>
+
+        <CardContent className="space-y-4 p-5">
           <p className="text-sm text-muted-foreground">
             {isPendingDecision
               ? t("approval.description")
               : t("approval.earlyDescription")}
           </p>
+
           <div className="space-y-2">
-            <Label htmlFor="approval-notes">
+            <Label htmlFor="approval-notes" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t("approval.notesLabel")}
             </Label>
             <Textarea
@@ -171,24 +164,27 @@ export function ApprovalActions({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              className="resize-none border-border/60 bg-background/50 text-sm focus:border-primary/50"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-3 pt-1">
             <Button
-              className="gap-2 bg-status-approved hover:bg-status-approved/90"
+              className="flex-1 gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/30 hover:from-emerald-500 hover:to-emerald-400 hover:shadow-emerald-900/40"
               onClick={() => setPendingDecision("approve")}
               disabled={isSubmitting}
             >
-              <ThumbsUp className="h-4 w-4" />
+              <TrendingUp className="h-4 w-4" />
               {t("approval.approve")}
             </Button>
             <Button
-              variant="destructive"
-              className="gap-2"
+              variant="outline"
+              className="flex-1 gap-2 border-red-500/40 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 hover:text-red-300"
               onClick={() => setPendingDecision("reject")}
               disabled={isSubmitting}
             >
-              <ThumbsDown className="h-4 w-4" />
+              <XCircle className="h-4 w-4" />
               {t("approval.reject")}
             </Button>
           </div>
@@ -199,12 +195,20 @@ export function ApprovalActions({
         open={pendingDecision !== null}
         onOpenChange={(open) => !open && setPendingDecision(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="border-border/60">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingDecision === "approve"
-                ? t("approval.confirmApprove")
-                : t("approval.confirmReject")}
+            <AlertDialogTitle className="flex items-center gap-2">
+              {pendingDecision === "approve" ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  {t("approval.confirmApprove")}
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  {t("approval.confirmReject")}
+                </>
+              )}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDecision === "approve"
@@ -223,16 +227,20 @@ export function ApprovalActions({
                 if (pendingDecision) submitDecision(pendingDecision);
               }}
               className={
-                pendingDecision === "reject"
-                  ? "bg-destructive hover:bg-destructive/90"
-                  : ""
+                pendingDecision === "approve"
+                  ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white hover:from-emerald-500 hover:to-emerald-400"
+                  : "bg-gradient-to-r from-red-700 to-red-600 text-white hover:from-red-600 hover:to-red-500"
               }
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
+                  {pendingDecision === "approve" ? (
+                    <ThumbsUp className="h-4 w-4" />
+                  ) : (
+                    <ThumbsDown className="h-4 w-4" />
+                  )}
                   {pendingDecision === "approve"
                     ? t("approval.approve")
                     : t("approval.reject")}

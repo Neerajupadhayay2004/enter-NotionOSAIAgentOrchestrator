@@ -13,7 +13,6 @@ export const upsert = mutation({
     severity: v.optional(v.string()),
     riskScore: v.optional(v.number()),
     decision: v.optional(v.string()),
-    notionUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

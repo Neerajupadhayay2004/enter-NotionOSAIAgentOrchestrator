@@ -1,111 +1,95 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useCallback, useEffect, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { supabase } from "@/integrations/supabase/client";
-import type { AgentAction, BudgetRequest } from "@/types/enterprise-os";
+import { Id } from "../../convex/_generated/dataModel";
+import type { BudgetRequest as SupabaseBudgetRequest, AgentAction } from "@/types/enterprise-os";
 
-function convexToBudgetRequest(doc: Record<string, unknown>): BudgetRequest {
-  return {
-    id: (doc.supabaseId as string) ?? (doc._id as string) ?? "",
-    campaign_name: (doc.campaignName as string) ?? "",
-    category: (doc.category as string) ?? "",
-    requested_amount: (doc.requestedAmount as number) ?? 0,
-    final_amount: (doc.finalAmount as number) ?? null,
-    status: (doc.status as string) ?? "negotiating",
-    justification: (doc.justification as string) ?? "",
-    requested_by: (doc.requestedBy as string) ?? "",
-    notion_url: (doc.notionUrl as string) ?? null,
-    notion_page_id: null,
-    github_issue_url: null,
-    created_at: new Date((doc.updatedAt as number) ?? Date.now()).toISOString(),
-    updated_at: new Date((doc.updatedAt as number) ?? Date.now()).toISOString(),
-  } as BudgetRequest;
-}
+// Define a type that matches both Supabase and Convex structures
+type BudgetRequest = Omit<SupabaseBudgetRequest, "id"> & { id: string };
 
 export function useBudgetRequests() {
   const convexRequests = useQuery(api.budgetSync.listAll);
-  const [supabaseRequests, setSupabaseRequests] = useState<BudgetRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const upsertConvex = useMutation(api.budgetSync.upsert);
+  const recordDecisionConvex = useMutation(api.budgetSync.recordDecision);
+  const deleteBySupabaseIdConvex = useMutation(api.budgetSync.deleteBySupabaseId);
 
-  // Fallback to Supabase if Convex is unavailable
-  useEffect(() => {
-    if (convexRequests !== undefined) {
-      setIsLoading(false);
-      return;
-    }
-    // Convex not loaded yet, try Supabase
-    let cancelled = false;
-    supabase
-      .from("budget_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (!cancelled && !error && data) setSupabaseRequests(data);
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [convexRequests]);
+  // Convert Convex documents to the format expected by the frontend
+  const requests: BudgetRequest[] = convexRequests
+    ? convexRequests.map((req) => ({
+        id: req.supabaseId || req._id,
+        campaign_name: req.campaignName,
+        category: req.category,
+        requested_amount: req.requestedAmount,
+        final_amount: req.finalAmount,
+        status: req.status,
+        justification: req.justification,
+        requested_by: req.requestedBy,
+        created_at: new Date(req.updatedAt).toISOString(),
+        updated_at: new Date(req.updatedAt).toISOString(),
+      }))
+    : [];
 
-  // Realtime from Supabase as backup
-  useEffect(() => {
-    if (convexRequests !== undefined) return; // Convex handles realtime
-    const channel = supabase
-      .channel("budget_requests_changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "budget_requests" }, async () => {
-        const { data } = await supabase
-          .from("budget_requests")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (data) setSupabaseRequests(data);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [convexRequests]);
+  const isLoading = convexRequests === undefined;
 
-  const requests = useMemo(() => {
-    if (convexRequests !== undefined) {
-      return convexRequests.map(convexToBudgetRequest);
-    }
-    return supabaseRequests;
-  }, [convexRequests, supabaseRequests]);
+  const fetchRequests = useCallback(() => {
+    // No need to fetch manually, useQuery handles it
+  }, []);
 
-  return { requests, isLoading };
+  const deleteRequest = useCallback(async (requestId: string) => {
+    console.log("[delete] Starting for:", requestId);
+    // Delete from Convex
+    await deleteBySupabaseIdConvex({ supabaseId: requestId });
+    console.log("[delete] Convex delete succeeded");
+  }, [deleteBySupabaseIdConvex]);
+
+  const makeDecision = useCallback(async (
+    requestId: string,
+    decision: "approve" | "reject",
+    notes?: string,
+  ) => {
+    const newStatus = decision === "approve" ? "approved" : "rejected";
+    const finalStatus = decision === "approve" ? "completed" : newStatus;
+
+    // Update Convex
+    await recordDecisionConvex({
+      supabaseId: requestId,
+      status: finalStatus,
+      humanDecision: decision,
+      humanDecisionNotes: notes,
+    });
+    console.log("[decision] Convex decision sync succeeded");
+
+    return { success: true, status: finalStatus };
+  }, [recordDecisionConvex]);
+
+  return { requests, isLoading, refetch: fetchRequests, deleteRequest, makeDecision };
 }
 
 export function useBudgetRequest(requestId: string | undefined) {
-  const [request, setRequest] = useState<BudgetRequest | null>(null);
-  const [actions, setActions] = useState<AgentAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const convexRequests = useQuery(api.budgetSync.listAll);
+  const request: BudgetRequest | null = convexRequests
+    ? convexRequests
+        .filter((req) => req.supabaseId === requestId || req._id === requestId)
+        .map((req) => ({
+          id: req.supabaseId || req._id,
+          campaign_name: req.campaignName,
+          category: req.category,
+          requested_amount: req.requestedAmount,
+          final_amount: req.finalAmount,
+          status: req.status,
+          justification: req.justification,
+          requested_by: req.requestedBy,
+          created_at: new Date(req.updatedAt).toISOString(),
+          updated_at: new Date(req.updatedAt).toISOString(),
+        }))[0] || null
+    : null;
 
-  const refetch = useCallback(async () => {
-    if (!requestId) return;
-    const [{ data: requestData }, { data: actionsData }] = await Promise.all([
-      supabase.from("budget_requests").select("*").eq("id", requestId).maybeSingle(),
-      supabase.from("agent_actions").select("*").eq("request_id", requestId).order("created_at", { ascending: true }),
-    ]);
-    setRequest(requestData ?? null);
-    setActions(actionsData ?? []);
-    setIsLoading(false);
-  }, [requestId]);
+  const actions: AgentAction[] = []; // We'll add Convex support for agent actions later
+  const isLoading = convexRequests === undefined;
 
-  useEffect(() => {
-    refetch();
-    if (!requestId) return;
-
-    const channel = supabase
-      .channel(`request_${requestId}_changes`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "budget_requests", filter: `id=eq.${requestId}` }, () => {
-        refetch();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "agent_actions", filter: `request_id=eq.${requestId}` }, () => {
-        refetch();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [requestId, refetch]);
+  const refetch = useCallback(() => {
+    // No need to fetch manually, useQuery handles it
+  }, []);
 
   return { request, actions, isLoading, refetch };
 }

@@ -1,0 +1,7 @@
+-- Add missing action types used by AI agents
+alter table public.agent_actions drop constraint agent_actions_action_type_check;
+alter table public.agent_actions add constraint agent_actions_action_type_check
+  check (action_type in (
+    'propose','review','counter','accept','escalate','human_decision',
+    'notion_synced','github_issue_created','error','ai_decision'
+  ));

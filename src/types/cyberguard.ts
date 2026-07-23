@@ -24,14 +24,16 @@ export const INCIDENT_STATUS_LABEL_KEYS: Record<IncidentStatus, string> = {
   pending_approval: "cyberguard.status.pendingApproval",
   resolved: "cyberguard.status.resolved",
   dismissed: "cyberguard.status.dismissed",
+  blocked: "cyberguard.status.blocked",
 };
 
-export const INCIDENT_STATUS_BADGE_VARIANT: Record<IncidentStatus, "incident-detected" | "incident-analyzing" | "incident-pending" | "incident-resolved" | "incident-dismissed"> = {
+export const INCIDENT_STATUS_BADGE_VARIANT: Record<IncidentStatus, "incident-detected" | "incident-analyzing" | "incident-pending" | "incident-resolved" | "incident-dismissed" | "incident-blocked"> = {
   detected: "incident-detected",
   analyzing: "incident-analyzing",
   pending_approval: "incident-pending",
   resolved: "incident-resolved",
   dismissed: "incident-dismissed",
+  blocked: "incident-blocked",
 };
 
 export const SEVERITY_LABEL_KEYS: Record<IncidentSeverity, string> = {
@@ -89,13 +91,17 @@ export const AGENT_LABEL_KEYS: Record<ActionActor, string> = {
   system: "cyberguard.agent.system",
 };
 
-export const ACTION_LABEL_KEYS: Record<ActionType, string> = {
+export const ACTION_LABEL_KEYS: Record<string, string> = {
   detect: "cyberguard.action.detect",
   enrich: "cyberguard.action.enrich",
   analyze: "cyberguard.action.analyze",
   decide: "cyberguard.action.decide",
   escalate: "cyberguard.action.escalate",
   human_decision: "cyberguard.action.humanDecision",
+  human_approval: "cyberguard.action.humanApproval",
+  human_block: "cyberguard.action.humanBlock",
+  ai_approval: "cyberguard.action.aiApproval",
+  ai_block: "cyberguard.action.aiBlock",
   block_executed: "cyberguard.action.blockExecuted",
   notion_synced: "cyberguard.action.notionSynced",
   error: "cyberguard.action.error",

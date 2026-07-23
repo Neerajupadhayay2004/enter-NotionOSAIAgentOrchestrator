@@ -15,6 +15,54 @@ export function useSecurityIncidents() {
     setIsLoading(false);
   }, []);
 
+  const approveIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" = "human") => {
+    const { error: updateError } = await supabase
+      .from("security_incidents")
+      .update({
+        status: "resolved",
+        decision: "approve",
+      })
+      .eq("id", incidentId);
+    if (updateError) throw updateError;
+
+    const actionType = actor === "ai" ? "ai_approval" : "human_approval";
+    const defaultReasoning = actor === "ai" ? "AI auto-approved the incident based on analysis." : "Human approved the incident.";
+
+    const { error: actionError } = await supabase
+      .from("incident_actions")
+      .insert({
+        incident_id: incidentId,
+        actor,
+        action_type: actionType,
+        reasoning: notes || defaultReasoning,
+      });
+    if (actionError) throw actionError;
+  }, []);
+
+  const blockIncident = useCallback(async (incidentId: string, notes?: string, actor: "human" | "ai" = "human") => {
+    const { error: updateError } = await supabase
+      .from("security_incidents")
+      .update({
+        status: "blocked",
+        decision: "block",
+      })
+      .eq("id", incidentId);
+    if (updateError) throw updateError;
+
+    const actionType = actor === "ai" ? "ai_block" : "human_block";
+    const defaultReasoning = actor === "ai" ? "AI auto-blocked the incident based on analysis." : "Human blocked the incident.";
+
+    const { error: actionError } = await supabase
+      .from("incident_actions")
+      .insert({
+        incident_id: incidentId,
+        actor,
+        action_type: actionType,
+        reasoning: notes || defaultReasoning,
+      });
+    if (actionError) throw actionError;
+  }, []);
+
   useEffect(() => {
     refetch();
     const channel = supabase
@@ -26,7 +74,7 @@ export function useSecurityIncidents() {
     };
   }, [refetch]);
 
-  return { incidents, isLoading, refetch };
+  return { incidents, isLoading, refetch, approveIncident, blockIncident };
 }
 
 export function useIncidentDetail(incidentId: string | undefined) {

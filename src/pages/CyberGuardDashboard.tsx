@@ -18,7 +18,7 @@ import { Loader2, ShieldHalf, Network } from "lucide-react";
 
 const CyberGuardDashboard = () => {
   const { t } = useTranslation();
-  const { incidents, isLoading } = useSecurityIncidents();
+  const { incidents, isLoading, approveIncident, blockIncident } = useSecurityIncidents();
   const { agents } = useAgentStatuses();
   const { actions } = useAllIncidentActions();
 
@@ -34,7 +34,7 @@ const CyberGuardDashboard = () => {
   }, [agents, incidents]);
 
   const pendingCount = incidents.filter((i) => i.status === "pending_approval").length;
-  const blockedIps = incidents.filter((i) => i.decision === "block");
+  const blockedIps = incidents.filter((i) => i.status === "blocked" || i.decision === "block");
 
   return (
     <div className="min-h-full bg-background">
@@ -108,8 +108,8 @@ const CyberGuardDashboard = () => {
               <IncidentList incidents={incidents} />
             </TabsContent>
 
-            <TabsContent value="approvals">
-              <PendingApprovalsPanel incidents={incidents} />
+              <TabsContent value="approvals">
+              <PendingApprovalsPanel incidents={incidents} actions={actions} onApprove={approveIncident} onBlock={blockIncident} />
             </TabsContent>
 
             <TabsContent value="agents" className="grid gap-3 sm:grid-cols-2">

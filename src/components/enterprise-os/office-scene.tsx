@@ -64,23 +64,18 @@ function createStation(color: number, label: string, sublabel: string): Station 
 function makeTextSprite(text: string, color: string, fontSize: number): THREE.Sprite {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
+  
+  // Use higher resolution for crisp text
   const scale = 4;
-  canvas.width = 512;
-  canvas.height = 96;
-  ctx.scale(1, 1);
-  ctx.font = `600 ${fontSize * scale / 4 * 4}px Inter, sans-serif`;
-  ctx.font = `600 ${fontSize}px Inter, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  // Render at higher resolution for crisp text
-  canvas.width = 512;
-  canvas.height = 96;
-  ctx.scale(2, 2);
+  canvas.width = 512 * scale;
+  canvas.height = 96 * scale;
+  ctx.scale(scale, scale);
+  
   ctx.font = `600 ${fontSize}px Inter, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = color;
-  ctx.fillText(text, 128, 24);
+  ctx.fillText(text, 256, 48);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -183,7 +178,7 @@ export function OfficeScene({ negotiatingCount, pendingCount, approvedCount, rej
     finance.group.position.copy(financePos);
     scene.add(finance.group);
 
-    const human = createStation(COLORS.human, "Human", "Approves in Notion");
+    const human = createStation(COLORS.human, "Human", "Board of Directors");
     human.group.position.copy(humanPos);
     scene.add(human.group);
 

@@ -1,0 +1,88 @@
+-- Full CRUD RLS policies for budget_requests and agent_actions
+-- Previously only SELECT was allowed, blocking frontend delete/approve/reject
+
+-- Budget Requests: allow authenticated + anon full access (edge functions use service role which bypasses RLS anyway)
+drop policy if exists "Public can view budget requests" on public.budget_requests;
+create policy "Public can view budget requests" on public.budget_requests for select using (true);
+create policy "Public can insert budget requests" on public.budget_requests for insert with check (true);
+create policy "Public can update budget requests" on public.budget_requests for update using (true);
+create policy "Public can delete budget requests" on public.budget_requests for delete using (true);
+
+-- Agent Actions: same full access
+drop policy if exists "Public can view agent actions" on public.agent_actions;
+create policy "Public can view agent actions" on public.agent_actions for select using (true);
+create policy "Public can insert agent actions" on public.agent_actions for insert with check (true);
+create policy "Public can update agent actions" on public.agent_actions for update using (true);
+create policy "Public can delete agent actions" on public.agent_actions for delete using (true);
+
+-- RPC function for cascading delete (bypasses RLS entirely via SECURITY DEFINER)
+create or replace function public.delete_budget_request(target_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.agent_actions where request_id = target_id;
+  delete from public.budget_requests where id = target_id;
+end;
+$$;
+
+-- RPC function for inline human decision (approve/reject) from dashboard
+create or replace function public.apply_human_decision(
+  target_id uuid,
+  decision text,
+  notes text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  request_record record;
+  new_status text;
+  final_amount_val numeric;
+  result jsonb;
+begin
+  select * into request_record from public.budget_requests where id = target_id;
+  
+  if request_record is null then
+    raise exception 'Budget request not found';
+  end if;
+
+  if decision = 'approve' then
+    new_status := 'approved';
+    final_amount_val := coalesce(request_record.final_amount, request_record.requested_amount);
+  elsif decision = 'reject' then
+    new_status := 'rejected';
+    final_amount_val := request_record.final_amount;
+  else
+    raise exception 'Decision must be approve or reject';
+  end if;
+
+  update public.budget_requests set status = new_status, final_amount = final_amount_val where id = target_id;
+
+  insert into public.agent_actions (request_id, actor, action_type, amount, reasoning, payload)
+  values (
+    target_id,
+    'human',
+    'human_decision',
+    final_amount_val,
+    coalesce(notes, 'Human ' || decision || 'd the budget via dashboard.'),
+    jsonb_build_object(
+      'status', initcap(decision),
+      'source', 'dashboard-inline',
+      'notes', notes
+    )
+  );
+
+  result := jsonb_build_object(
+    'success', true,
+    'status', new_status,
+    'final_amount', final_amount_val
+  );
+  
+  return result;
+end;
+$$;

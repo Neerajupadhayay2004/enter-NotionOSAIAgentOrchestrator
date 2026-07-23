@@ -33,6 +33,7 @@ const badgeVariants = cva(
         "incident-pending": "border-transparent bg-incident-status-pending text-incident-status-pending-foreground",
         "incident-resolved": "border-transparent bg-incident-status-resolved text-incident-status-resolved-foreground",
         "incident-dismissed": "border-transparent bg-incident-status-dismissed text-incident-status-dismissed-foreground",
+        "incident-blocked": "border-transparent bg-incident-status-blocked text-incident-status-blocked-foreground",
       },
     },
     defaultVariants: {

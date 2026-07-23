@@ -95,6 +95,8 @@
     --incident-status-resolved-foreground: 0 0% 100%;
     --incident-status-dismissed: 215 16% 55%;
     --incident-status-dismissed-foreground: 0 0% 100%;
+    --incident-status-blocked: 0 84% 55%;
+    --incident-status-blocked-foreground: 0 0% 100%;
 
     --agent-threat-detection: 199 89% 48%;
     --agent-malware-analysis: 280 65% 55%;

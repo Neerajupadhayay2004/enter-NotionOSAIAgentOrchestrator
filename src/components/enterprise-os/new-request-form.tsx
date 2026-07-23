@@ -7,14 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { useBudgetNegotiation } from "@/hooks/use-budget-negotiation";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
 export function NewRequestForm() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const createRequest = useMutation(api.budgetSync.create);
   const CATEGORIES = [
     { value: "Paid Ads", labelKey: "home.form.categoryPaidAds" },
     { value: "Events", labelKey: "home.form.categoryEvents" },
@@ -27,7 +28,6 @@ export function NewRequestForm() {
   const [requestedAmount, setRequestedAmount] = useState("");
   const [justification, setJustification] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { negotiate } = useBudgetNegotiation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,35 +38,16 @@ export function NewRequestForm() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create the request in Supabase
-      const { data, error } = await supabase.functions.invoke("submit-budget-request", {
-        body: {
-          campaignName,
-          category,
-          requestedAmount: Number(requestedAmount),
-          justification,
-        },
+      // Create the request in Convex
+      const requestId = await createRequest({
+        campaignName,
+        category,
+        requestedAmount: Number(requestedAmount),
+        justification,
+        requestedBy: "Marketing Agent",
       });
 
-      if (error) throw error;
-
-      const requestId = data.requestId;
-
-      // 2. Run AI negotiation via Python backend (bypasses broken Notion edge functions)
-      const result = await negotiate(requestId);
-
-      if (result.success) {
-        if (result.status === "completed") {
-          toast.success(`AI auto-approved: ${result.recommendation} (${result.confidence}% confidence)`);
-        } else if (result.status === "rejected") {
-          toast.error(`AI rejected: ${result.reasoning.slice(0, 100)}`);
-        } else {
-          toast.info("Request submitted for human approval");
-        }
-      } else {
-        toast.info("Request submitted (AI analysis pending)");
-      }
-
+      toast.info("Request submitted for human approval");
       navigate(`/budget-os/requests/${requestId}`);
     } catch (error) {
       console.error(error);

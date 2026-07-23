@@ -1,6 +1,29 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+export const create = mutation({
+  args: {
+    campaignName: v.string(),
+    category: v.string(),
+    requestedAmount: v.number(),
+    justification: v.string(),
+    requestedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const supabaseId = crypto.randomUUID(); // Generate a unique ID
+    return await ctx.db.insert("budgetRequests", {
+      supabaseId,
+      campaignName: args.campaignName,
+      category: args.category,
+      requestedAmount: args.requestedAmount,
+      status: "pending_approval",
+      justification: args.justification,
+      requestedBy: args.requestedBy,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const upsert = mutation({
   args: {
     supabaseId: v.string(),
@@ -11,7 +34,6 @@ export const upsert = mutation({
     status: v.string(),
     justification: v.string(),
     requestedBy: v.string(),
-    notionUrl: v.optional(v.string()),
     humanDecision: v.optional(v.string()),
     humanDecisionNotes: v.optional(v.string()),
   },
@@ -74,6 +96,33 @@ export const recordDecision = mutation({
       humanDecisionAt: args.humanDecision ? Date.now() : undefined,
       updatedAt: Date.now(),
     });
+    return existing._id;
+  },
+});
+
+export const deleteBySupabaseId = mutation({
+  args: {
+    supabaseId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("budgetRequests")
+      .withIndex("by_supabase_id", (q) => q.eq("supabaseId", args.supabaseId))
+      .unique();
+    if (!existing) return null;
+    
+    // Delete the budget request
+    await ctx.db.delete(existing._id);
+    
+    // Also delete any associated AI recommendations
+    const recs = await ctx.db
+      .query("aiRecommendations")
+      .withIndex("by_request", (q) => q.eq("requestSupabaseId", args.supabaseId))
+      .collect();
+    for (const rec of recs) {
+      await ctx.db.delete(rec._id);
+    }
+    
     return existing._id;
   },
 });

@@ -8,6 +8,7 @@ export function useConvexBudgetSync(request: BudgetRequest | null) {
   const upsert = useMutation(api.budgetSync.upsert);
   const recordDecision = useMutation(api.budgetSync.recordDecision);
   const saveAiReview = useMutation(api.aiReview.save);
+  const deleteBySupabaseId = useMutation(api.budgetSync.deleteBySupabaseId);
 
   useEffect(() => {
     if (!request) return;
@@ -20,7 +21,6 @@ export function useConvexBudgetSync(request: BudgetRequest | null) {
       status: request.status,
       justification: request.justification,
       requestedBy: request.requested_by,
-      notionUrl: request.notion_url ?? undefined,
     }).catch((err) => {
       console.warn("Convex upsert failed (non-critical):", err);
     });
@@ -32,7 +32,7 @@ export function useConvexBudgetSync(request: BudgetRequest | null) {
       await recordDecision({
         supabaseId: request.id,
         status,
-        humanDecision: status === "completed" ? "approved" : "rejected",
+        humanDecision: status === "approved" || status === "completed" ? "approved" : "rejected",
       });
     } catch (err) {
       console.warn("Convex decision sync failed (non-critical):", err);
@@ -49,12 +49,21 @@ export function useConvexBudgetSync(request: BudgetRequest | null) {
         reasoning: review.reasoning,
         riskFactors: review.riskFactors,
         strengths: review.strengths,
-        provider: (review as Record<string, unknown>).provider as string ?? undefined,
+        provider: ((review as unknown) as Record<string, unknown>).provider as string ?? undefined,
       });
     } catch (err) {
       console.warn("Convex AI review sync failed (non-critical):", err);
     }
   };
 
-  return { syncDecision, syncAiReview };
+  const syncDelete = async () => {
+    if (!request) return;
+    try {
+      await deleteBySupabaseId({ supabaseId: request.id });
+    } catch (err) {
+      console.warn("Convex delete sync failed (non-critical):", err);
+    }
+  };
+
+  return { syncDecision, syncAiReview, syncDelete };
 }

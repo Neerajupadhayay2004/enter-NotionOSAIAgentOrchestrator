@@ -13,7 +13,6 @@ export default defineSchema({
     requestedBy: v.string(),
     marketAnalysisData: v.optional(v.string()),
     marketAnalysisScore: v.optional(v.number()),
-    notionUrl: v.optional(v.string()),
     humanDecision: v.optional(v.string()),
     humanDecisionNotes: v.optional(v.string()),
     humanDecisionAt: v.optional(v.number()),
@@ -47,7 +46,6 @@ export default defineSchema({
     severity: v.optional(v.string()),
     riskScore: v.optional(v.number()),
     decision: v.optional(v.string()),
-    notionUrl: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_supabase_id", ["supabaseId"])
     .index("by_status", ["status"]),

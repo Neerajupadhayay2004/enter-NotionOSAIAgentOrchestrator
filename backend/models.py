@@ -26,6 +26,8 @@ class BudgetAnalysisResponse(BaseModel):
     reasoning: str
     risk_factors: list[str] = []
     strengths: list[str] = []
+    market_analysis: str = ""
+    recommended_amount: Optional[float] = None
     provider: str = "gemini"
 
 

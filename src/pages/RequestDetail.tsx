@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,23 +6,42 @@ import { StatusBadge } from "@/components/enterprise-os/status-badge";
 import { ActionTimeline } from "@/components/enterprise-os/action-timeline";
 import { ApprovalActions } from "@/components/enterprise-os/approval-actions";
 import { AiRecommendationPanel } from "@/components/enterprise-os/approval-panel";
-import { useBudgetRequest } from "@/hooks/use-budget-requests";
+import { useBudgetRequest, useBudgetRequests } from "@/hooks/use-budget-requests";
 import { useBudgetNegotiation } from "@/hooks/use-budget-negotiation";
 import { useConvexBudgetSync } from "@/hooks/use-convex-budget";
-import { ArrowLeft, Github, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Github, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useState, useCallback } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const RequestDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { request, actions, isLoading, refetch } = useBudgetRequest(id);
-  const { syncDecision, syncAiReview } = useConvexBudgetSync(request);
+  const { deleteRequest } = useBudgetRequests();
+  const { syncDecision, syncAiReview, syncDelete } = useConvexBudgetSync(request);
   const { negotiate, isNegotiating } = useBudgetNegotiation();
 
-  const handleDecision = async (status: string) => {
-    await syncDecision(status);
-    await refetch();
-  };
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDecision = useCallback(async (status: string) => {
+    setOptimisticStatus(status);
+    setTimeout(() => refetch(), 200);
+    setTimeout(() => refetch(), 1500);
+    syncDecision(status).catch(() => {});
+  }, [syncDecision, refetch]);
 
   const handleRetryNegotiation = async () => {
     if (!id) return;
@@ -33,6 +52,22 @@ const RequestDetail = () => {
       toast.error("AI analysis failed");
     }
     refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setIsDeleting(true);
+    try {
+      await deleteRequest(id);
+      await syncDelete();
+      toast.success("Request deleted successfully");
+      navigate("/budget-os");
+    } catch (err) {
+      toast.error("Failed to delete request");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   if (isLoading) {
@@ -54,8 +89,9 @@ const RequestDetail = () => {
     );
   }
 
-  const showApprovalPanel = request.status === "pending_approval" || request.status === "negotiating";
-  const isPendingDecision = request.status === "pending_approval";
+  const displayStatus = optimisticStatus ?? request.status;
+  const showApprovalPanel = displayStatus === "pending_approval" || displayStatus === "negotiating";
+  const isPendingDecision = displayStatus === "pending_approval";
 
   return (
     <div className="min-h-full bg-background">
@@ -72,7 +108,39 @@ const RequestDetail = () => {
                 {t("requestDetail.requestedBy", { category: request.category, name: request.requested_by })}
               </p>
             </div>
-            <StatusBadge status={request.status} />
+            <div className="flex items-center gap-2">
+              {request.status === "negotiating" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryNegotiation}
+                  disabled={isNegotiating}
+                  className="border-violet-500/40 text-violet-400 hover:border-violet-500/60 hover:bg-violet-500/10"
+                >
+                  {isNegotiating ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Re-run AI
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+                className="border-red-500/40 text-red-400 hover:border-red-500/60 hover:bg-red-500/10 hover:text-red-300"
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Delete
+              </Button>
+              <StatusBadge status={displayStatus} />
+            </div>
           </div>
         </div>
       </header>
@@ -86,24 +154,6 @@ const RequestDetail = () => {
               request={request}
               onReviewLoaded={(review) => { syncAiReview(review); }}
             />
-            {request.status === "negotiating" && (
-              <Card className="border-status-negotiating/40">
-                <CardContent className="flex items-center justify-between py-4">
-                  <p className="text-sm text-muted-foreground">
-                    AI analysis is processing. If stuck, click retry.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRetryNegotiation}
-                    disabled={isNegotiating}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isNegotiating ? "animate-spin" : ""}`} />
-                    Retry AI Analysis
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
             <ApprovalActions
               requestId={request.id}
               onDecision={handleDecision}
@@ -130,7 +180,7 @@ const RequestDetail = () => {
             <div>
               <p className="text-xs uppercase text-muted-foreground">{t("requestDetail.outcome.status")}</p>
               <div className="text-lg font-semibold">
-                <StatusBadge status={request.status} />
+                <StatusBadge status={displayStatus} />
               </div>
             </div>
           </CardContent>
@@ -153,6 +203,41 @@ const RequestDetail = () => {
           <ActionTimeline actions={actions} />
         </div>
       </main>
+
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
+      >
+        <AlertDialogContent className="border-border/60">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete Request
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this budget request? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              className="bg-gradient-to-r from-red-700 to-red-600 text-white hover:from-red-600 hover:to-red-500"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -1,0 +1,10 @@
+-- Add 'blocked' status to security_incidents so blocked IPs show distinctly
+-- on the dashboard instead of being lumped under 'resolved'.
+
+-- Drop the old CHECK constraint and re-create with 'blocked' added
+ALTER TABLE public.security_incidents
+  DROP CONSTRAINT IF EXISTS security_incidents_status_check;
+
+ALTER TABLE public.security_incidents
+  ADD CONSTRAINT security_incidents_status_check
+  CHECK (status IN ('detected','analyzing','pending_approval','resolved','dismissed','blocked'));

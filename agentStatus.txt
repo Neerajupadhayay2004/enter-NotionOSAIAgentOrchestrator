@@ -1,0 +1,6 @@
+_id                                | _creationTime      | agentName           | lastActiveAt  | state 
+-----------------------------------|--------------------|---------------------|---------------|-------
+"kn75wqmqcw17yghvwgtz0n6pan8ayap8" | 1784631400807.287  | "compliance"        | 1784631400807 | "idle"
+"kn78kgh97m2ybyq9qs634er7518ay3nz" | 1784631400807.2869 | "incident_response" | 1784631400807 | "idle"
+"kn72qafw33we6kxbydfqqt6j218ayfnb" | 1784631400807.2866 | "malware_analysis"  | 1784631400807 | "idle"
+"kn791rzg137x4p879sm4w0c8n18az2r8" | 1784631400807.2864 | "threat_detection"  | 1784631400807 | "idle"
