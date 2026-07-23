@@ -1,7 +1,2 @@
-{
-  "functions": {
-    "human-budget-decision": {
-      "verify_jwt": false
-    }
-  }
-}
+[functions.human-budget-decision]
+verify_jwt = false

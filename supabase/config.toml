@@ -1,1 +1,43 @@
 project_id = "spb-t4n096zlnw1gm30w"
+
+[functions.ai-budget-review]
+verify_jwt = false
+
+[functions.human-budget-decision]
+verify_jwt = false
+
+[functions.run-negotiation]
+verify_jwt = false
+
+[functions.analyze-xss-submission]
+verify_jwt = false
+
+[functions.simulate-threat-event]
+verify_jwt = false
+
+[functions.simulate-honeypot-attack]
+verify_jwt = false
+
+[functions.run-incident-pipeline]
+verify_jwt = false
+
+[functions.submit-budget-request]
+verify_jwt = false
+
+[functions.delete-budget-request]
+verify_jwt = false
+
+[functions.notion-sync-status]
+verify_jwt = false
+
+[functions.notion-sync-security-status]
+verify_jwt = false
+
+[functions.notion-webhook]
+verify_jwt = false
+
+[functions.notion-webhook-security]
+verify_jwt = false
+
+[functions.submit-abuseipdb-report]
+verify_jwt = false
