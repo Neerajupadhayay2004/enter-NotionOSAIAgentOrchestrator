@@ -1,0 +1,37 @@
+services:
+  - name: cyberguard-frontend
+    type: static
+    repo: https://github.com/your-username/your-repo.git
+    branch: main
+    buildCommand: npm run build:prod
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        fromDatabase:
+          name: your-supabase-db
+          property: host
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: CONVEX_URL
+        sync: false
+
+  - name: cyberguard-go-backend
+    type: web
+    repo: https://github.com/your-username/your-repo.git
+    branch: main
+    rootDir: go-backend
+    buildCommand: go build -o cyberguard-backend .
+    startCommand: ./cyberguard-backend
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        fromDatabase:
+          name: your-supabase-db
+          property: host
+      - key: SUPABASE_ANON_KEY
+        sync: false
