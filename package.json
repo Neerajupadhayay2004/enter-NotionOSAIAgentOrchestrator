@@ -9,7 +9,7 @@
     "dev:backend": "cd backend && source venv/bin/activate && python main.py",
     "dev:all": "npm run dev & npm run dev:backend",
     "convex:deploy": "convex deploy",
-    "build": "NODE_ENV=development vite build --mode development",
+    "build": "vite build",
     "build:prod": "vite build",
     "check": "pnpm lint && pnpm exec tsc --noEmit",
     "lint": "eslint .",
