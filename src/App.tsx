@@ -7,8 +7,13 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { routers } from "./router";
 
 const queryClient = new QueryClient();
-const convexUrl = import.meta.env.VITE_CONVEX_URL ?? "";
-const convex = new ConvexReactClient(convexUrl || "https://placeholder.convex.cloud");
+const convexUrl = import.meta.env.VITE_CONVEX_URL;
+if (!convexUrl) {
+  throw new Error(
+    "[Convex] VITE_CONVEX_URL is not set. Add it to your .env.local file or deployment environment variables."
+  );
+}
+const convex = new ConvexReactClient(convexUrl);
 
 const App = () => {
   const router = createBrowserRouter(routers);
